@@ -4,6 +4,9 @@ const foodflieOptions = {
   host: process.env.DB_HOST || "localhost",
   database: process.env.DB_NAME || "foodapp",
   password: process.env.DB_PASSWORD || "your_password",
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@gmail.com",
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "password",
+  
 };
 
 module.exports = foodflieOptions;
