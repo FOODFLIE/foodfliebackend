@@ -1,4 +1,5 @@
 const foodflieOptions = {
+  allowedOrigins:process.env.ALLOWED_ORIGINS,
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || "postgres",
   host: process.env.DB_HOST || "localhost",

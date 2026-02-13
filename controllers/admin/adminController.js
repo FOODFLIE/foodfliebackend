@@ -1,4 +1,4 @@
-const { AdminLogin } = require("../services/admin/loginServices");
+const { AdminLogin } = require("../../services/admin/loginServices");
 
 const AdminLoginController = async (req, res) => {
   try {
