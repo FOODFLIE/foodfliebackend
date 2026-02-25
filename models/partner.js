@@ -14,6 +14,19 @@ const Partner = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    email: {
+      type: DataTypes.STRING(255),
+    },
+    store_name: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    outlet_type: {
+      type: DataTypes.STRING(100),
+    },
+    image: {
+      type: DataTypes.TEXT,
+    },
 
     phone: {
       type: DataTypes.STRING(20),
@@ -30,9 +43,30 @@ const Partner = sequelize.define(
       allowNull: true,
     },
 
+    opening_time: {
+      type: DataTypes.TIME,
+    },
+    closing_time: {
+      type: DataTypes.TIME,
+    },
+    working_days: {
+      type: DataTypes.JSON,
+    },
+
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+    },
+    approved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    lattitde: {
+      type: DataTypes.FLOAT,
+    },
+    longitude: {
+      type: DataTypes.FLOAT,
     },
 
     created_at: {
@@ -43,7 +77,7 @@ const Partner = sequelize.define(
   {
     tableName: "flie_partners",
     timestamps: false,
-  }
+  },
 );
 
 module.exports = Partner;

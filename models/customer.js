@@ -17,6 +17,12 @@ const Customer = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    latitude: {
+      type: DataTypes.FLOAT,
+    },
+    longitude: {
+      type: DataTypes.FLOAT,
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
