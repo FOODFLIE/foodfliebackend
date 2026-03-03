@@ -1,9 +1,21 @@
-const { AddProduct, GetAllProducts, GetProductById, UpdateProduct, DeleteProduct } = require("../services/productServices");
+const {
+  AddProduct,
+  GetAllProducts,
+  GetProductById,
+  UpdateProduct,
+  DeleteProduct,
+} = require("../services/seller/partnerProductServices");
 
 const AddProductController = async (req, res) => {
   try {
     const { name, description, price, category_id, partner_id } = req.body;
-    const product = await AddProduct(name, description, price, category_id, partner_id);
+    const product = await AddProduct(
+      name,
+      description,
+      price,
+      category_id,
+      partner_id,
+    );
     res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,5 +70,5 @@ module.exports = {
   GetAllProductsController,
   GetProductByIdController,
   UpdateProductController,
-  DeleteProductController
+  DeleteProductController,
 };

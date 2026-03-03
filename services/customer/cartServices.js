@@ -39,9 +39,9 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
       );
     }
 
-    // Check if product already in cart by SKU
+    // Check if product already in cart by product_id
     let cartItem = await CartItem.findOne({
-      where: { cart_id: cart.id, sku },
+      where: { cart_id: cart.id, product_id: product.id },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
@@ -61,7 +61,7 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
       cartItem = await CartItem.create(
         {
           cart_id: cart.id,
-          sku,
+          product_id: product.id,
           product_name: product.name,
           price: product.price,
           quantity,
@@ -97,7 +97,14 @@ const GetCart = async (customer_id) => {
       where: { cart_id: cart.id }
     });
     
-    return { ...cart.toJSON(), items };
+      const Partner = require("../../models/partner");
+    const partner = await Partner.findByPk(cart.partner_id);
+    
+    return { 
+      ...cart.toJSON(), 
+      partner_name: partner?.store_name || null,
+      items 
+    };
   } catch (error) {
     throw error;
   }

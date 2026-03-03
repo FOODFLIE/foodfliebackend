@@ -62,7 +62,7 @@ const Partner = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
-    lattitde: {
+    latitude: {
       type: DataTypes.FLOAT,
     },
     longitude: {
