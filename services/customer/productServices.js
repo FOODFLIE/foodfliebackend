@@ -74,8 +74,66 @@ const GetProductBySKU = async (sku) => {
   }
 };
 
+/**
+ * Get all stores
+ */
+const GetAllStores = async (userLat, userLng) => {
+  try {
+    console.log("User Location:", { userLat, userLng });
+    
+    const stores = await Partner.findAll({
+      attributes: [
+        "id",
+        "store_name",
+        "address",
+        "area",
+        "image",
+        "latitude",
+        "longitude",
+      ],
+      raw: true,
+    });
+    console.log("Fetched stores count:", stores.length);
+    console.log("Store coordinates:", stores.map(s => ({ name: s.store_name, lat: s.latitude, lng: s.longitude })));
+
+    // Haversine formula
+    const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const filteredStores = stores.filter(store => {
+      const distance = calculateDistanceKm(
+        userLat,
+        userLng,
+        store.latitude,
+        store.longitude
+      );
+      console.log(`Store: ${store.store_name}, Lat: ${store.latitude}, Lng: ${store.longitude}, Distance: ${distance.toFixed(2)} km`);
+      return distance <= 1.5;
+    });
+
+    console.log("Filtered stores count:", filteredStores.length);
+    return filteredStores;
+  } catch (error) {
+    throw error;
+  }
+};
+
 module.exports = {
   GetPartnersByCategory,
   GetProductsByPartner,
   GetProductBySKU,
+  GetAllStores,
 };

@@ -2,6 +2,7 @@ const {
   GetPartnersByCategory,
   GetProductsByPartner,
   GetProductBySKU,
+  GetAllStores,
 } = require("../../services/customer/productServices");
 
 const GetPartnersByCategoryController = async (req, res) => {
@@ -34,8 +35,19 @@ const GetProductBySKUController = async (req, res) => {
   }
 };
 
+const GetAllStoresController = async (req, res) => {
+  try {
+    const { userLat, userLng } = req.body;
+    const stores = await GetAllStores(parseFloat(17.385044), parseFloat(78.486671));
+    res.status(200).json(stores);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   GetPartnersByCategoryController,
   GetProductsByPartnerController,
   GetProductBySKUController,
+  GetAllStoresController,
 };

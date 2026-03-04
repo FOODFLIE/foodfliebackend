@@ -11,11 +11,14 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
   const t = await sequelize.transaction();
 
   try {
+    console.log("PlaceOrder - Input:", { customer_id, address, payment_method });
+    
     // Get active cart
     const cart = await Cart.findOne({
       where: { customer_id, status: "active" },
       transaction: t,
     });
+    console.log("PlaceOrder - Cart found:", cart ? { id: cart.id, partner_id: cart.partner_id, total: cart.total } : null);
 
     if (!cart) throw new Error("Cart is empty");
 
@@ -24,6 +27,7 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
       where: { cart_id: cart.id },
       transaction: t,
     });
+    console.log("PlaceOrder - Cart items count:", cartItems.length);
 
     if (cartItems.length === 0) throw new Error("Cart is empty");
 
@@ -39,6 +43,7 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
       },
       { transaction: t }
     );
+    console.log("PlaceOrder - Order created:", { order_id: order.id, total_amount: order.total_amount });
 
     // Create order items from cart items
     const orderItems = cartItems.map((item) => ({
@@ -49,14 +54,22 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
     }));
 
     await OrderItem.bulkCreate(orderItems, { transaction: t });
+    console.log("PlaceOrder - Order items created:", orderItems.length);
 
-    // Mark cart as converted
-    cart.status = "converted";
-    await cart.save({ transaction: t });
+    // Delete cart items
+    await CartItem.destroy({ where: { cart_id: cart.id }, transaction: t });
+    console.log("PlaceOrder - Cart items deleted");
+
+    // Delete cart
+    await cart.destroy({ transaction: t });
+    console.log("PlaceOrder - Cart deleted");
 
     await t.commit();
+    console.log("PlaceOrder - Transaction committed successfully");
     return { order, items: orderItems };
   } catch (error) {
+    console.error("PlaceOrder - Error:", error.message);
+    console.error("PlaceOrder - Error details:", error);
     await t.rollback();
     throw error;
   }
