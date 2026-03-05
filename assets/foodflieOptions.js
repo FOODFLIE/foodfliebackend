@@ -7,7 +7,7 @@ const foodflieOptions = {
   password: process.env.DB_PASSWORD || "your_password",
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@gmail.com",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "password",
-  
+  return_url: process.env.RETURN_URL || "http://localhost:5173/orderConfirmation",
 };
 
 module.exports = foodflieOptions;

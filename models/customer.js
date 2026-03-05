@@ -12,10 +12,17 @@ const Customer = sequelize.define(
     name: {
       type: DataTypes.STRING,
     },
-    
+
     phone: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isEmail: true,
+      },
     },
     latitude: {
       type: DataTypes.FLOAT,

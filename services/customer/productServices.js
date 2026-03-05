@@ -5,7 +5,6 @@ const sequelize = require("../../config/sequelize");
  * Get partners by category
  */
 const GetPartnersByCategory = async (category_id) => {
-  console.log("Fetching partners for category_id:", category_id);
   try {
     const products = await Product.findAll({
       where: { category_id, is_available: true },
@@ -79,7 +78,6 @@ const GetProductBySKU = async (sku) => {
  */
 const GetAllStores = async (userLat, userLng) => {
   try {
-    console.log("User Location:", { userLat, userLng });
     
     const stores = await Partner.findAll({
       attributes: [
@@ -93,8 +91,7 @@ const GetAllStores = async (userLat, userLng) => {
       ],
       raw: true,
     });
-    console.log("Fetched stores count:", stores.length);
-    console.log("Store coordinates:", stores.map(s => ({ name: s.store_name, lat: s.latitude, lng: s.longitude })));
+  
 
     // Haversine formula
     const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
@@ -120,11 +117,9 @@ const GetAllStores = async (userLat, userLng) => {
         store.latitude,
         store.longitude
       );
-      console.log(`Store: ${store.store_name}, Lat: ${store.latitude}, Lng: ${store.longitude}, Distance: ${distance.toFixed(2)} km`);
       return distance <= 1.5;
     });
 
-    console.log("Filtered stores count:", filteredStores.length);
     return filteredStores;
   } catch (error) {
     throw error;

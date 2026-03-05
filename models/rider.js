@@ -24,7 +24,22 @@ const Rider = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    vehicle_number: {
+      type: DataTypes.STRING(50),
+    },
 
+    status: {
+      type: DataTypes.ENUM("offline", "available", "busy"),
+      defaultValue: "offline",
+    },
+
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+    },
+
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
@@ -38,7 +53,7 @@ const Rider = sequelize.define(
   {
     tableName: "flie_riders",
     timestamps: false,
-  }
+  },
 );
 
 module.exports = Rider;

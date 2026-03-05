@@ -3,7 +3,6 @@ const { PlaceOrder, GetCustomerOrders, GetOrderById } = require("../services/ord
 const PlaceOrderController = async (req, res) => {
   try {
     const { address, payment_method } = req.body;
-    console.log("Received order data:", { address, payment_method });
     const customer_id = req.customer.id;
     const result = await PlaceOrder(customer_id, address, payment_method);
     res.status(201).json(result);

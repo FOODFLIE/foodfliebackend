@@ -22,7 +22,6 @@ const VerifyOTPController = async (req, res) => {
 
 const RegisterSellerController = async (req, res) => {
   const data = req.body;
-  console.log("Received registration data:", data);
   try {
     const result = await RegisterSeller(data);
     res.status(201).json(result);

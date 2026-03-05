@@ -3,22 +3,24 @@ const OrderItem = require("../models/order_item");
 const Cart = require("../models/cart");
 const CartItem = require("../models/cartItems");
 const sequelize = require("../config/sequelize");
+const Address = require("../models/address");
+const { getFoodflieoptions } = require("../utils/foodlieutils");
 
-/**
- * Place order from cart
- */
+const flies = getFoodflieoptions();
+
+const return_url = flies.return_url;
+//  Place order from cart
+
 const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
   const t = await sequelize.transaction();
 
   try {
-    console.log("PlaceOrder - Input:", { customer_id, address, payment_method });
     
     // Get active cart
     const cart = await Cart.findOne({
       where: { customer_id, status: "active" },
       transaction: t,
     });
-    console.log("PlaceOrder - Cart found:", cart ? { id: cart.id, partner_id: cart.partner_id, total: cart.total } : null);
 
     if (!cart) throw new Error("Cart is empty");
 
@@ -27,7 +29,6 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
       where: { cart_id: cart.id },
       transaction: t,
     });
-    console.log("PlaceOrder - Cart items count:", cartItems.length);
 
     if (cartItems.length === 0) throw new Error("Cart is empty");
 
@@ -36,37 +37,42 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
       {
         customer_id,
         partner_id: cart.partner_id,
-        total_amount: cart.total,
+        total_amount: cart.subtotal,
+        delivery_fee: cart.delivery_fee,
+        final_amount: cart.total,
         status: "placed",
         payment_method,
+        payment_status: "pending",
         address,
       },
       { transaction: t }
     );
-    console.log("PlaceOrder - Order created:", { order_id: order.id, total_amount: order.total_amount });
 
     // Create order items from cart items
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       menu_item_id: item.product_id,
+      item_name: item.product_name,
       quantity: item.quantity,
       price: item.price,
+      total_price: item.total_price,
     }));
 
     await OrderItem.bulkCreate(orderItems, { transaction: t });
-    console.log("PlaceOrder - Order items created:", orderItems.length);
 
     // Delete cart items
     await CartItem.destroy({ where: { cart_id: cart.id }, transaction: t });
-    console.log("PlaceOrder - Cart items deleted");
 
     // Delete cart
     await cart.destroy({ transaction: t });
-    console.log("PlaceOrder - Cart deleted");
 
     await t.commit();
-    console.log("PlaceOrder - Transaction committed successfully");
-    return { order, items: orderItems };
+    return { 
+      success: true,
+      order_id: order.id,
+      message: "Order placed successfully",
+      redirect_url: return_url + `/${order.id}`
+    };
   } catch (error) {
     console.error("PlaceOrder - Error:", error.message);
     console.error("PlaceOrder - Error details:", error);
