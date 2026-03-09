@@ -5,17 +5,19 @@ const CartItem = require("../models/cartItems");
 const sequelize = require("../config/sequelize");
 const Address = require("../models/address");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
+const { autoAssignOrder } = require("./rider/riderOrderServices");
+const { sendOrderConfirmation } = require("../utils/twilioService");
 
 const flies = getFoodflieoptions();
 
 const return_url = flies.return_url;
 //  Place order from cart
 
-const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
+const PlaceOrder = async (customer_id, addressData, payment_method = "COD") => {
+ 
   const t = await sequelize.transaction();
 
   try {
-    
     // Get active cart
     const cart = await Cart.findOne({
       where: { customer_id, status: "active" },
@@ -43,9 +45,12 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
         status: "placed",
         payment_method,
         payment_status: "pending",
-        address,
+        address: addressData.fullAddress || addressData.coords?.address,
+        customer_phone: addressData.receiverNumber,
+        latitude: addressData.coords?.lat,
+        longitude: addressData.coords?.lng,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     // Create order items from cart items
@@ -67,11 +72,28 @@ const PlaceOrder = async (customer_id, address, payment_method = "COD") => {
     await cart.destroy({ transaction: t });
 
     await t.commit();
-    return { 
+
+    // Send WhatsApp notification
+    if (addressData.receiverNumber) {
+      try {
+        await sendOrderConfirmation(addressData.receiverNumber, order.id);
+      } catch (error) {
+        console.error("WhatsApp notification failed:", error.message);
+      }
+    }
+
+    // Auto-assign rider after order is placed
+    try {
+      await autoAssignOrder(order.id);
+    } catch (error) {
+      console.error("Rider assignment failed:", error.message);
+    }
+
+    return {
       success: true,
       order_id: order.id,
       message: "Order placed successfully",
-      redirect_url: return_url + `/${order.id}`
+      redirect_url: return_url + `/${order.id}`,
     };
   } catch (error) {
     console.error("PlaceOrder - Error:", error.message);

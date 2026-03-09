@@ -6,7 +6,9 @@ const {
   GetProductBySKUController,
   GetAllStoresController,
 } = require("../../controllers/customer/productController");
+const { SearchController } = require("../../controllers/customer/searchController");
 
+router.get("/search", SearchController);
 router.post("/stores", GetAllStoresController);
 router.get("/by-category", GetPartnersByCategoryController);
 router.get("/by-partner", GetProductsByPartnerController);

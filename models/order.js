@@ -14,6 +14,15 @@ const Order = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    customer_phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+
+    delivery_instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
 
     partner_id: {
       type: DataTypes.INTEGER,

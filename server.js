@@ -9,6 +9,7 @@ const sellerRoutes = require("./routes/sellerRoutes");
 const cartRoutes = require("./routes/customer/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const addressRoutes = require("./routes/customer/addressRoutes");
+const riderRoutes = require("./routes/rider/riderRoutes");
 const app = express();
 
 require("dotenv").config();
@@ -36,6 +37,7 @@ app.use("/api/seller", sellerRoutes);
 app.use("/api/cart", cartRoutes)
 app.use("/api/order", orderRoutes)
 app.use("/api/address", addressRoutes)
+app.use("/api/rider", riderRoutes)
 
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server is running on port 5000");
