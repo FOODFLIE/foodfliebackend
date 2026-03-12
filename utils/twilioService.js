@@ -16,7 +16,7 @@ const sendOrderConfirmation = async (phoneNumber, orderId) => {
       contentVariables: JSON.stringify({ "1": orderId.toString() }),
       to: `whatsapp:${cleanPhone}`,
     });
-    console.log('WhatsApp message sent:', message.sid);
+    console.log('WhatsApp message sent:', message);
     return message.sid;
   } catch (error) {
     console.error('WhatsApp notification failed:', error.message);
@@ -27,12 +27,13 @@ const sendOrderConfirmation = async (phoneNumber, orderId) => {
 const sendOTP = async (phoneNumber, otp) => {
   try {
     const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    // Send via SMS instead of WhatsApp (no sandbox required)
     const message = await client.messages.create({
-      from: `whatsapp:${flies.twilio_whatsapp_number || '+14155238886'}`,
+      from: flies.twilio_phone_number,
       body: `Your OTP is: ${otp}. Valid for 5 minutes.`,
-      to: `whatsapp:${cleanPhone}`,
+      to: cleanPhone,
     });
-    console.log('OTP sent via WhatsApp:', message.sid);
+    console.log('OTP sent via SMS:', message.sid, 'Status:', message.status);
     return message.sid;
   } catch (error) {
     console.error('OTP send failed:', error.message);

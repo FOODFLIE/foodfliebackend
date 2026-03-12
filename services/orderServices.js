@@ -13,7 +13,7 @@ const flies = getFoodflieoptions();
 const return_url = flies.return_url;
 //  Place order from cart
 
-const PlaceOrder = async (customer_id, addressData, payment_method = "COD") => {
+const PlaceOrder = async (customer_id, addressData, payment_method = "COD", cooking_instructions = null) => {
  
   const t = await sequelize.transaction();
 
@@ -49,6 +49,7 @@ const PlaceOrder = async (customer_id, addressData, payment_method = "COD") => {
         customer_phone: addressData.receiverNumber,
         latitude: addressData.coords?.lat,
         longitude: addressData.coords?.lng,
+        delivery_instructions: cooking_instructions,
       },
       { transaction: t },
     );
