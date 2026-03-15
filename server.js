@@ -33,7 +33,7 @@ app.use("/api/product", productRoutes);
 app.use("/api/customer-product", customerProductRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/customer", customerRoutes);
-app.use("/api/seller", sellerRoutes);
+app.use("/api/partner", sellerRoutes);
 app.use("/api/cart", cartRoutes)
 app.use("/api/order", orderRoutes)
 app.use("/api/address", addressRoutes)

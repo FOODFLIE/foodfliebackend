@@ -14,6 +14,7 @@ const foodflieOptions = {
   twilio_auth_token: process.env.TWILIO_AUTH_TOKEN || "your_twilio_auth_token",
   twilio_whatsapp_number:
     process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886",
+  affiliateUrl: process.env.AFFILIATE_URL || "https://foodflie.com",
 };
 
 module.exports = foodflieOptions;

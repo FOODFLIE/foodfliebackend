@@ -1,4 +1,4 @@
-const { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller } = require("../../services/seller/sellerLoginServices");
+const { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller } = require("../../services/partner/partnerLoginServices");
 
 const SendOTPController = async (req, res) => {
   try {

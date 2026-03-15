@@ -4,18 +4,12 @@ const {
   GetProductById,
   UpdateProduct,
   DeleteProduct,
-} = require("../services/seller/partnerProductServices");
+} = require("../../services/partner/partnerMenuServices");
 
 const AddProductController = async (req, res) => {
   try {
-    const { name, description, price, category_id, partner_id } = req.body;
-    const product = await AddProduct(
-      name,
-      description,
-      price,
-      category_id,
-      partner_id,
-    );
+    const { partner_id, ...productData } = req.body;
+    const product = await AddProduct(partner_id, productData);
     res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -39,18 +33,18 @@ const GetProductByIdController = async (req, res) => {
     const product = await GetProductById(id, partner_id);
     res.status(200).json(product);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(404).json({ message: error.message });
   }
 };
 
 const UpdateProductController = async (req, res) => {
   try {
     const { id } = req.params;
-    const { partner_id, ...data } = req.body;
-    const product = await UpdateProduct(id, partner_id, data);
+    const { partner_id, ...productData } = req.body;
+    const product = await UpdateProduct(id, partner_id, productData);
     res.status(200).json(product);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(404).json({ message: error.message });
   }
 };
 
@@ -61,7 +55,7 @@ const DeleteProductController = async (req, res) => {
     await DeleteProduct(id, partner_id);
     res.status(200).json({ message: "Product deleted" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(404).json({ message: error.message });
   }
 };
 

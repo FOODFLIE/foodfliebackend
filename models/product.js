@@ -9,33 +9,59 @@ const Product = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+
     partner_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+
     category_id: {
       type: DataTypes.INTEGER,
     },
+
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+
+    description: {
+      type: DataTypes.TEXT,
+    },
+
     image: {
       type: DataTypes.STRING(500),
       allowNull: true,
     },
+
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+
     sku: {
       type: DataTypes.STRING,
     },
+
+    is_veg: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+
+    preparation_time: {
+      type: DataTypes.INTEGER,
+    },
+
     is_available: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+
     created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+
+    updated_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
