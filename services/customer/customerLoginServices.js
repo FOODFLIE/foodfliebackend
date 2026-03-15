@@ -1,5 +1,6 @@
 const Customer = require("../../models/customer");
 const jwt = require("jsonwebtoken");
+const { sendOTP } = require("../../utils/twilioService");
 
 const otpStore = new Map();
 
@@ -16,7 +17,9 @@ const SendOTPForRegister = async (phone, name, email) => {
 
     const otp = generateOTP();
     otpStore.set(phone, { otp, name, email, expires: Date.now() + 300000 });
-    console.log(`OTP for ${phone}: ${otp}`);
+
+    await sendOTP(phone, otp);
+
     return { message: "OTP sent successfully" };
   } catch (error) {
     throw error;
@@ -30,13 +33,17 @@ const VerifyOTPAndRegister = async (phone, otp) => {
       throw new Error("Invalid or expired OTP");
     }
 
-    const customer = await Customer.create({ name: stored.name, phone, email: stored.email });
+    const customer = await Customer.create({
+      name: stored.name,
+      phone,
+      email: stored.email,
+    });
     otpStore.delete(phone);
 
     const token = jwt.sign(
       { id: customer.id, phone: customer.phone, role: "customer" },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "30d" },
     );
     return { token, customer };
   } catch (error) {
@@ -54,6 +61,10 @@ const SendOTPForLogin = async (phone) => {
     const otp = generateOTP();
     otpStore.set(phone, { otp, expires: Date.now() + 300000 });
     console.log(`OTP for ${phone}: ${otp}`);
+
+    await sendOTP(phone, otp);
+
+    console.log(`OTP sent successfully for ${phone}`);
     return { message: "OTP sent successfully" };
   } catch (error) {
     throw error;
@@ -73,7 +84,7 @@ const VerifyOTPAndLogin = async (phone, otp) => {
     const token = jwt.sign(
       { id: customer.id, phone: customer.phone, role: "customer" },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "30d" },
     );
     return { token, customer };
   } catch (error) {
@@ -81,4 +92,9 @@ const VerifyOTPAndLogin = async (phone, otp) => {
   }
 };
 
-module.exports = { SendOTPForRegister, VerifyOTPAndRegister, SendOTPForLogin, VerifyOTPAndLogin };
+module.exports = {
+  SendOTPForRegister,
+  VerifyOTPAndRegister,
+  SendOTPForLogin,
+  VerifyOTPAndLogin,
+};

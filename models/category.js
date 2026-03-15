@@ -33,5 +33,5 @@ const Category = sequelize.define(
     timestamps: false,
   },
 );
-
+ 
 module.exports = Category;

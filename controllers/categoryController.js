@@ -1,4 +1,10 @@
-const { AddCategory, GetAllCategories, GetCategoryById, UpdateCategory, DeleteCategory } = require("../services/categoryServices");
+const {
+  AddCategory,
+  GetAllCategories,
+  GetCategoryById,
+  UpdateCategory,
+  DeleteCategory,
+} = require("../services/categoryServices");
 
 const AddCategoryController = async (req, res) => {
   try {
@@ -12,8 +18,8 @@ const AddCategoryController = async (req, res) => {
 
 const GetAllCategoriesController = async (req, res) => {
   try {
-    const { partner_id } = req.query;
-    const categories = await GetAllCategories(partner_id);
+    const categories = await GetAllCategories();
+
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -23,8 +29,7 @@ const GetAllCategoriesController = async (req, res) => {
 const GetCategoryByIdController = async (req, res) => {
   try {
     const { id } = req.params;
-    const { partner_id } = req.query;
-    const category = await GetCategoryById(id, partner_id);
+    const category = await GetCategoryById(id);
     res.status(200).json(category);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,5 +63,5 @@ module.exports = {
   GetAllCategoriesController,
   GetCategoryByIdController,
   UpdateCategoryController,
-  DeleteCategoryController
+  DeleteCategoryController,
 };
