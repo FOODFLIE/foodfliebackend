@@ -6,8 +6,17 @@ const { Op } = require("sequelize");
 // Import models to ensure associations are loaded
 require("../../models");
 
+// Generate SKU function
+const generateSKU = (partnerId, productName) => {
+  const timestamp = Date.now().toString().slice(-6);
+  const namePrefix = productName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+  return `${partnerId}-${namePrefix}-${timestamp}`;
+};
+
 const AddProduct = async (partner_id, productData) => {
   try {
+    const sku = generateSKU(partner_id, productData.name);
+    
     const product = await Product.create({
       partner_id,
       name: productData.name,
@@ -15,6 +24,7 @@ const AddProduct = async (partner_id, productData) => {
       price: productData.price,
       category_id: productData.category_id,
       image: productData.image,
+      sku: sku,
       is_veg: productData.is_veg,
       preparation_time: productData.preparation_time,
       is_available: productData.is_available !== undefined ? productData.is_available : true,
