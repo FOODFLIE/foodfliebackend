@@ -12,6 +12,7 @@ const generateOTP = () => {
 const SendOTPForSeller = async (phone) => {
   try {
     const otp = generateOTP();
+    console.log("otp", otp);
     otpStore.set(phone, { otp, expires: Date.now() + 300000 });
     return { message: "OTP sent successfully" };
   } catch (error) {
