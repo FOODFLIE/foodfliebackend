@@ -1,4 +1,10 @@
 const Product = require("../../models/product");
+const Category = require("../../models/category");
+const Partner = require("../../models/partner");
+const { Op } = require("sequelize");
+
+// Import models to ensure associations are loaded
+require("../../models");
 
 const AddProduct = async (partner_id, productData) => {
   try {
@@ -80,10 +86,112 @@ const DeleteProduct = async (id, partner_id) => {
   }
 };
 
+// Get all categories
+const GetAllCategories = async () => {
+  try {
+    const categories = await Category.findAll({
+      where: { is_active: true },
+      order: [["name", "ASC"]],
+      attributes: ["id", "name", "image"]
+    });
+    return categories;
+  } catch (error) {
+    throw new Error("Error fetching categories: " + error.message);
+  }
+};
+
+// Get products by category for specific seller
+const GetSellerCategoryProducts = async (sellerId, categoryId, filters = {}) => {
+  try {
+    // Validate seller exists
+    const seller = await Partner.findByPk(sellerId);
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    // Validate category exists
+    const category = await Category.findByPk(categoryId);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    const whereClause = {
+      partner_id: sellerId,
+      category_id: categoryId
+    };
+
+    // Apply filters
+    if (filters.is_available !== undefined) {
+      whereClause.is_available = filters.is_available === 'true';
+    }
+
+    if (filters.is_veg !== undefined) {
+      whereClause.is_veg = filters.is_veg === 'true';
+    }
+
+    if (filters.search) {
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: `%${filters.search}%` } },
+        { description: { [Op.iLike]: `%${filters.search}%` } }
+      ];
+    }
+
+    if (filters.min_price) {
+      whereClause.price = { [Op.gte]: parseFloat(filters.min_price) };
+    }
+
+    if (filters.max_price) {
+      if (whereClause.price) {
+        whereClause.price = {
+          ...whereClause.price,
+          [Op.lte]: parseFloat(filters.max_price)
+        };
+      } else {
+        whereClause.price = { [Op.lte]: parseFloat(filters.max_price) };
+      }
+    }
+
+    const products = await Product.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "name"]
+        }
+      ],
+      order: [["name", "ASC"]],
+      attributes: [
+        "id", "name", "description", "price", "image", 
+        "is_veg", "preparation_time", "is_available"
+      ]
+    });
+
+    return {
+      seller: {
+        id: seller.id,
+        name: seller.name,
+        address: seller.address
+      },
+      category: {
+        id: category.id,
+        name: category.name,
+        description: category.description
+      },
+      products: products,
+      total_products: products.length
+    };
+  } catch (error) {
+    throw new Error("Error fetching seller category products: " + error.message);
+  }
+};
+
 module.exports = {
   AddProduct,
   GetAllProducts,
   GetProductById,
   UpdateProduct,
   DeleteProduct,
+  GetAllCategories,
+  GetSellerCategoryProducts,
 };

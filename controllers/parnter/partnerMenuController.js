@@ -4,6 +4,8 @@ const {
   GetProductById,
   UpdateProduct,
   DeleteProduct,
+  GetAllCategories,
+  GetSellerCategoryProducts,
 } = require("../../services/partner/partnerMenuServices");
 
 const AddProductController = async (req, res) => {
@@ -59,10 +61,70 @@ const DeleteProductController = async (req, res) => {
   }
 };
 
+// Get all categories
+const GetAllCategoriesController = async (req, res) => {
+  try {
+    const categories = await GetAllCategories();
+    res.status(200).json({
+      success: true,
+      message: "Categories fetched successfully",
+      data: categories,
+      count: categories.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get products by category for specific seller
+const GetSellerCategoryProductsController = async (req, res) => {
+  try {
+    const sellerId = req.params.sellerId;
+    const { categoryId } = req.params;
+    const { is_available, is_veg, search, min_price, max_price } = req.query;
+
+    const filters = {
+      is_available,
+      is_veg,
+      search,
+      min_price,
+      max_price,
+    };
+
+    const result = await GetSellerCategoryProducts(
+      sellerId,
+      categoryId,
+      filters,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Seller category products fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.message.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   AddProductController,
   GetAllProductsController,
   GetProductByIdController,
   UpdateProductController,
   DeleteProductController,
+  GetAllCategoriesController,
+  GetSellerCategoryProductsController,
 };
