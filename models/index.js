@@ -10,6 +10,7 @@ const Address = require("./address");
 const Rider = require("./rider");
 const PartnerDocuments = require("./partnerDocuments");
 const Affiliate = require("./affiliates");
+const Fee = require("./fee");
 
 // Cart associations
 Cart.hasMany(CartItem, { foreignKey: "cart_id", as: "items" });
@@ -43,5 +44,6 @@ module.exports = {
   Address, 
   Rider, 
   PartnerDocuments, 
-  Affiliate 
+  Affiliate,
+  Fee
 };

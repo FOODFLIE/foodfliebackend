@@ -2,83 +2,83 @@ const Cart = require("../../models/cart");
 const CartItem = require("../../models/cartItems");
 const Product = require("../../models/product");
 const sequelize = require("../../config/sequelize");
+const { getFoodflieoptions } = require("../../utils/foodlieutils");
 
+const flies = getFoodflieoptions();
+const delivery_fee = flies.delivery_fee ;
 
 
 const AddToCart = async (customer_id, sku, quantity = 1) => {
-  // Validate input
   if (!customer_id || !sku) throw new Error("Invalid request");
   if (quantity <= 0) throw new Error("Invalid quantity");
 
   const t = await sequelize.transaction();
 
   try {
-    // Fetch product by SKU and check availability
-    const product = await Product.findOne({ where: { sku }, transaction: t });
-    if (!product || !product.is_available) {
-      throw new Error("Product unavailable");
-    }
+    // Single query to get product with availability check
+    const product = await Product.findOne({ 
+      where: { sku, is_available: true }, 
+      attributes: ["id", "name", "price", "partner_id"],
+      transaction: t 
+    });
+    if (!product) throw new Error("Product unavailable");
 
-    // Find active cart for customer with lock to prevent race conditions
-    let cart = await Cart.findOne({
+    // Find or create cart
+    let [cart, created] = await Cart.findOrCreate({
       where: { customer_id, status: "active" },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
+      defaults: { 
+        customer_id, 
+        partner_id: product.partner_id, 
+        delivery_fee: delivery_fee,
+        subtotal: 0,
+        total: 0
+      },
+      transaction: t
     });
 
-    // Enforce single restaurant cart rule
-    if (cart && cart.partner_id !== product.partner_id) {
+    // Enforce single restaurant rule
+    if (!created && cart.partner_id !== product.partner_id) {
       throw new Error("You can order from only one restaurant at a time");
     }
 
-    // Create new cart if doesn't exist
-    if (!cart) {
-      cart = await Cart.create(
-        { customer_id, partner_id: product.partner_id, delivery_fee: 20 },
-        { transaction: t },
-      );
+    // Update delivery fee every time
+    if (!created) {
+      cart.delivery_fee = delivery_fee;
+      await cart.save({ transaction: t });
     }
 
-    // Check if product already in cart by product_id
-    let cartItem = await CartItem.findOne({
+    // Upsert cart item
+    const [cartItem, itemCreated] = await CartItem.findOrCreate({
       where: { cart_id: cart.id, product_id: product.id },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
+      defaults: {
+        cart_id: cart.id,
+        product_id: product.id,
+        product_name: product.name,
+        price: product.price,
+        quantity,
+        total_price: product.price * quantity
+      },
+      transaction: t
     });
 
-    let priceChange = 0;
-
-    if (cartItem) {
-      // Update existing cart item
-      const oldTotal = Number(cartItem.total_price);
+    if (!itemCreated) {
       cartItem.quantity += quantity;
       cartItem.total_price = cartItem.quantity * cartItem.price;
-      priceChange = cartItem.total_price - oldTotal;
       await cartItem.save({ transaction: t });
-    } else {
-      // Create new cart item
-      const total_price = product.price * quantity;
-      cartItem = await CartItem.create(
-        {
-          cart_id: cart.id,
-          product_id: product.id,
-          product_name: product.name,
-          price: product.price,
-          quantity,
-          total_price,
-        },
-        { transaction: t },
-      );
-      priceChange = total_price;
     }
 
-    // Update cart totals efficiently without fetching all items
-    cart.subtotal = Number(cart.subtotal) + Number(priceChange);
-    cart.total = Number(cart.subtotal) + Number(cart.delivery_fee);
+    // Recalculate cart totals using Sequelize aggregation
+    const totalResult = await CartItem.sum('total_price', {
+      where: { cart_id: cart.id },
+      transaction: t
+    });
+    
+    cart.subtotal = totalResult || 0;
+    cart.total = cart.subtotal + Number(cart.delivery_fee);
     await cart.save({ transaction: t });
 
     await t.commit();
-    return { cart, cartItem };
+    return { message: "Item added to cart successfully" };
   } catch (error) {
     await t.rollback();
     throw error;
@@ -88,23 +88,20 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
 const GetCart = async (customer_id) => {
   try {
     const cart = await Cart.findOne({
-      where: { customer_id, status: "active" }
+      where: { customer_id, status: "active" },
+      include: [
+        {
+          model: CartItem,
+          as: "items",
+          attributes: ["id", "product_id", "product_name", "price", "quantity", "total_price"]
+        }
+      ],
+      attributes: ["id", "customer_id", "partner_id", "subtotal", "delivery_fee", "total", "status"]
     });
     
     if (!cart) return null;
     
-    const items = await CartItem.findAll({
-      where: { cart_id: cart.id }
-    });
-    
-      const Partner = require("../../models/partner");
-    const partner = await Partner.findByPk(cart.partner_id);
-    
-    return { 
-      ...cart.toJSON(), 
-      partner_name: partner?.store_name || null,
-      items 
-    };
+    return cart;
   } catch (error) {
     throw error;
   }
@@ -114,27 +111,44 @@ const UpdateCartItem = async (cart_item_id, quantity) => {
   const t = await sequelize.transaction();
 
   try {
-    // Find cart item
-    const cartItem = await CartItem.findByPk(cart_item_id);
+    const cartItem = await CartItem.findByPk(cart_item_id, { transaction: t });
     if (!cartItem) throw new Error("Cart item not found");
 
-    // Update quantity and total price
-    cartItem.quantity = quantity;
-    cartItem.total_price = cartItem.price * quantity;
-    await cartItem.save({ transaction: t });
+    if (quantity <= 0) {
+      // Remove item if quantity is 0 or negative
+      await cartItem.destroy({ transaction: t });
+      
+      // Check if cart is empty
+      const remainingCount = await CartItem.count({ 
+        where: { cart_id: cartItem.cart_id }, 
+        transaction: t 
+      });
+      
+      if (remainingCount === 0) {
+        await Cart.destroy({ where: { id: cartItem.cart_id }, transaction: t });
+        await t.commit();
+        return { message: "Cart is now empty and has been deleted" };
+      }
+    } else {
+      // Update quantity
+      cartItem.quantity = quantity;
+      cartItem.total_price = cartItem.price * quantity;
+      await cartItem.save({ transaction: t });
+    }
 
-    // Recalculate cart totals
-    const cart = await Cart.findByPk(cartItem.cart_id);
-    const items = await CartItem.findAll({ where: { cart_id: cart.id } });
-    cart.subtotal = items.reduce(
-      (sum, item) => sum + Number(item.total_price),
-      0,
-    );
-    cart.total = Number(cart.subtotal) + Number(cart.delivery_fee);
+    // Recalculate cart totals using Sequelize aggregation
+    const cart = await Cart.findByPk(cartItem.cart_id, { transaction: t });
+    const totalResult = await CartItem.sum('total_price', {
+      where: { cart_id: cartItem.cart_id },
+      transaction: t
+    });
+    
+    cart.subtotal = totalResult || 0;
+    cart.total = cart.subtotal + Number(cart.delivery_fee);
     await cart.save({ transaction: t });
 
     await t.commit();
-    return { cart, cartItem };
+    return { message: "Cart item updated successfully" };
   } catch (error) {
     await t.rollback();
     throw error;
@@ -145,29 +159,34 @@ const RemoveFromCart = async (cart_item_id) => {
   const t = await sequelize.transaction();
 
   try {
-    // Find and delete cart item
-    const cartItem = await CartItem.findByPk(cart_item_id);
+    const cartItem = await CartItem.findByPk(cart_item_id, { transaction: t });
     if (!cartItem) throw new Error("Cart item not found");
 
     const cart_id = cartItem.cart_id;
     await cartItem.destroy({ transaction: t });
 
-    // Check remaining items
-    const cart = await Cart.findByPk(cart_id);
-    const items = await CartItem.findAll({ where: { cart_id } });
+    // Check if cart is empty using count
+    const remainingCount = await CartItem.count({ 
+      where: { cart_id }, 
+      transaction: t 
+    });
 
-    if (items.length === 0) {
-      // Delete cart if empty
-      await cart.destroy({ transaction: t });
-    } else {
-      // Recalculate cart totals
-      cart.subtotal = items.reduce(
-        (sum, item) => sum + Number(item.total_price),
-        0,
-      );
-      cart.total = Number(cart.subtotal) + Number(cart.delivery_fee);
-      await cart.save({ transaction: t });
+    if (remainingCount === 0) {
+      await Cart.destroy({ where: { id: cart_id }, transaction: t });
+      await t.commit();
+      return { message: "Item removed. Cart is now empty and has been deleted." };
     }
+
+    // Recalculate cart totals using Sequelize aggregation
+    const cart = await Cart.findByPk(cart_id, { transaction: t });
+    const totalResult = await CartItem.sum('total_price', {
+      where: { cart_id },
+      transaction: t
+    });
+    
+    cart.subtotal = totalResult || 0;
+    cart.total = cart.subtotal + Number(cart.delivery_fee);
+    await cart.save({ transaction: t });
 
     await t.commit();
     return { message: "Item removed from cart" };
