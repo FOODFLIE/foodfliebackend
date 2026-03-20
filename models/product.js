@@ -30,6 +30,14 @@ const Product = sequelize.define(
     description: {
       type: DataTypes.TEXT,
     },
+    rating: {
+      type: DataTypes.DECIMAL(2, 1),
+      allowNull: true,
+      validate: {
+        min: 0,
+        max: 5,
+      },
+    },
 
     image: {
       type: DataTypes.STRING(500),
