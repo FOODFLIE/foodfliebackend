@@ -15,6 +15,8 @@ const foodflieOptions = {
   twilio_whatsapp_number:
     process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886",
   affiliateUrl: process.env.AFFILIATE_URL || "https://foodflie.com",
+  allowed_distance: process.env.ALLOWED_DISTANCE || 1.5,
+  delivery_fee: process.env.DELIVERY_FEE|| 5,
 };
 
 module.exports = foodflieOptions;

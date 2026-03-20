@@ -12,8 +12,8 @@ const generateOTP = () => {
 const SendOTPForSeller = async (phone) => {
   try {
     const otp = generateOTP();
+    console.log("otp", otp);
     otpStore.set(phone, { otp, expires: Date.now() + 300000 });
-    console.log(`OTP for ${phone}: ${otp}`);
     return { message: "OTP sent successfully" };
   } catch (error) {
     throw error;
@@ -47,7 +47,6 @@ const VerifyOTPForSeller = async (phone, otp) => {
 };
 
 const RegisterSeller = async (data) => {
-  console.log("RegisterSeller data:", data);
   const t = await sequelize.transaction();
 
   try {

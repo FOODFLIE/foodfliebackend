@@ -60,11 +60,9 @@ const SendOTPForLogin = async (phone) => {
 
     const otp = generateOTP();
     otpStore.set(phone, { otp, expires: Date.now() + 300000 });
-    console.log(`OTP for ${phone}: ${otp}`);
 
     await sendOTP(phone, otp);
 
-    console.log(`OTP sent successfully for ${phone}`);
     return { message: "OTP sent successfully" };
   } catch (error) {
     throw error;

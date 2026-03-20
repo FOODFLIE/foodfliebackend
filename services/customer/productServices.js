@@ -1,5 +1,10 @@
 const { Product, Partner } = require("../../models/index");
 const sequelize = require("../../config/sequelize");
+const { getFoodflieoptions } = require("../../utils/foodlieutils");
+
+
+const flies = getFoodflieoptions();
+const allowedRadiusKm = flies.allowed_distance;
 
 /**
  * Get partners by category
@@ -77,6 +82,7 @@ const GetProductBySKU = async (sku) => {
  * Get all stores
  */
 const GetAllStores = async (userLat, userLng) => {
+
   try {
     
     const stores = await Partner.findAll({
@@ -117,7 +123,9 @@ const GetAllStores = async (userLat, userLng) => {
         store.latitude,
         store.longitude
       );
-      return distance <= 1.5;
+
+      console.log(`Store: ${store.store_name}, Distance: ${distance} km`);
+      return distance <= allowedRadiusKm;
     });
 
     return filteredStores;

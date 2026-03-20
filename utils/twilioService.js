@@ -6,11 +6,7 @@ const client = require("twilio")(
   flies.twilio_account_sid,
   flies.twilio_auth_token,
 );
-console.log(
-  flies.twilio_account_sid,
-  flies.twilio_auth_token,
-  flies.twilio_whatsapp_number,
-);
+
 
 const sendOrderConfirmation = async (phoneNumber, orderId) => {
   try {
@@ -44,7 +40,7 @@ const sendOTP = async (phoneNumber, otp) => {
       body: `Your OTP is: ${otp}. Valid for 5 minutes.`,
       to: `whatsapp:${cleanPhone}`,
     });
-    console.log("OTP sent via SMS:", message.sid, "Status:", message);
+    
     return message.sid;
   } catch (error) {
     console.error("OTP send failed:", error.message);
