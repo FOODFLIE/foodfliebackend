@@ -12,17 +12,42 @@ const Rider = sequelize.define(
 
     name: {
       type: DataTypes.STRING(255),
-      allowNull: true,
     },
 
     phone: {
       type: DataTypes.STRING(20),
-      allowNull: true,
+    },
+
+    username: {
+      type: DataTypes.STRING(100),
+      unique: true,
+      allowNull: false,
+    },
+
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
     vehicle_type: {
       type: DataTypes.STRING(50),
-      allowNull: true,
+    },
+
+    vehicle_number: {
+      type: DataTypes.STRING(50),
+    },
+
+    status: {
+      type: DataTypes.ENUM("offline", "available", "busy"),
+      defaultValue: "offline",
+    },
+
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+    },
+
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
     },
 
     is_active: {

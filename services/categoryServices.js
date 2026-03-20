@@ -9,18 +9,18 @@ const AddCategory = async (name, partner_id) => {
     }
 }
 
-const GetAllCategories = async (partner_id) => {
+const GetAllCategories = async () => {
     try {
-        const categories = await Category.findAll({ where: { partner_id } });
+        const categories = await Category.findAll();
         return categories;
     } catch (error) {
         throw error;
     }
 }
 
-const GetCategoryById = async (id, partner_id) => {
+const GetCategoryById = async (id) => {
     try {
-        const category = await Category.findOne({ where: { id, partner_id } });
+        const category = await Category.findByPk(id);
         return category;
     } catch (error) {
         throw error;

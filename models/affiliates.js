@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/sequelize");
 
-const Category = sequelize.define(
-  "flie_categories",
+const Affiliate = sequelize.define(
+  "flie_affiliates",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -15,23 +15,29 @@ const Category = sequelize.define(
       allowNull: false,
     },
 
-    image: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
+    type: {
+      type: DataTypes.STRING(50),
     },
 
-    // ✅ NEW FIELD: delivery_type
-    delivery_type: {
-      type: DataTypes.ENUM("fast", "regular"),
-      allowNull: false,
-      defaultValue: "regular",
+    phone: {
+      type: DataTypes.STRING(20),
     },
 
-    // ✅ NEW FIELD: delivery_time (in minutes)
-    delivery_time: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 30,
+    address: {
+      type: DataTypes.TEXT,
+    },
+
+    commission_type: {
+      type: DataTypes.STRING(20),
+      defaultValue: "fixed",
+    },
+
+    commission_value: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 10,
+    },
+    qr_code_url: {
+      type: DataTypes.STRING(255),
     },
 
     is_active: {
@@ -45,9 +51,9 @@ const Category = sequelize.define(
     },
   },
   {
-    tableName: "flie_categories",
+    tableName: "flie_affiliates",
     timestamps: false,
   }
 );
 
-module.exports = Category;
+module.exports = Affiliate;
