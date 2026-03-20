@@ -10,15 +10,32 @@ const generateOTP = () => {
 
 const SendOTPForRegister = async (phone, name, email) => {
   try {
-    const existingCustomer = await Customer.findOne({ where: { phone } });
+    let existingCustomer = await Customer.findOne({ where: { phone } });
     if (existingCustomer) {
       throw new Error("Customer already exists");
     }
+      if (!existingCustomer) {
+      existingCustomer = await Customer.create({
+        phone,
+        name: name || "Guest",
+        email: email || null,
+      });
+    }
 
-    const otp = generateOTP();
-    otpStore.set(phone, { otp, name, email, expires: Date.now() + 300000 });
+    // Generate token
+    const token = jwt.sign(
+      { id: existingCustomer.id, phone: existingCustomer.phone, role: "customer" },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-    await sendOTP(phone, otp);
+    return { token, customer: existingCustomer };
+
+    // const otp = generateOTP();
+    // otpStore.set(phone, { otp, name, email, expires: Date.now() + 300000 });
+
+    // await sendOTP(phone, otp);
+
 
     return { message: "OTP sent successfully" };
   } catch (error) {
@@ -58,11 +75,27 @@ const SendOTPForLogin = async (phone) => {
       throw new Error("Customer not found. Please register first.");
     }
 
-    const otp = generateOTP();
-    otpStore.set(phone, { otp, expires: Date.now() + 300000 });
+    // const otp = generateOTP();
+    // otpStore.set(phone, { otp, expires: Date.now() + 300000 });
 
-    await sendOTP(phone, otp);
+    // await sendOTP(phone, otp);
 
+      if (!customer) {
+      customer = await Customer.create({
+        phone,
+        name: name || "Guest",
+        email: email || null,
+      });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { id: customer.id, phone: customer.phone, role: "customer" },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    return { token, customer };
     return { message: "OTP sent successfully" };
   } catch (error) {
     throw error;
