@@ -53,7 +53,7 @@ const GetProductsByPartner = async (partner_id) => {
           model: Product,
           as: "products",
           where: { is_available: true },
-          attributes: ["id", "name", "image", "price", "sku", "category_id","rating"],
+          attributes: ["id", "name", "image", "price", "sku", "category_id","rating", "description","is_veg"],
           required: false,
         },
       ],
