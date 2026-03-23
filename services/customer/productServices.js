@@ -1,6 +1,8 @@
 const { Product, Partner } = require("../../models/index");
 const sequelize = require("../../config/sequelize");
 const { getFoodflieoptions } = require("../../utils/foodlieutils");
+const { getDistance } = require("../../utils/deliveryRadius");
+
 
 
 const flies = getFoodflieoptions();
@@ -53,7 +55,7 @@ const GetProductsByPartner = async (partner_id) => {
           model: Product,
           as: "products",
           where: { is_available: true },
-          attributes: ["id", "name", "image", "price", "sku", "category_id"],
+          attributes: ["id", "name", "image", "price", "sku", "category_id","rating", "description","is_veg"],
           required: false,
         },
       ],
@@ -81,10 +83,14 @@ const GetProductBySKU = async (sku) => {
 /**
  * Get all stores
  */
-const GetAllStores = async (userLat, userLng) => {
 
+
+const GetAllStores = async (userLat, userLng) => {
   try {
-    
+    if (!userLat || !userLng) {
+      throw new Error("User location required");
+    }
+
     const stores = await Partner.findAll({
       attributes: [
         "id",
@@ -97,38 +103,26 @@ const GetAllStores = async (userLat, userLng) => {
       ],
       raw: true,
     });
-  
 
-    // Haversine formula
-    const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
+    const nearbyStores = stores
+      .map((store) => {
+        const distance = getDistance(
+          userLat,
+          userLng,
+          parseFloat(store.latitude),
+          parseFloat(store.longitude)
+        );
 
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+        return {
+          ...store,
+          distance, // ✅ add distance
+        };
+      })
+      .filter((store) => store.distance <= allowedRadiusKm)
+      .sort((a, b) => a.distance - b.distance); // ✅ nearest first
 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
+    return nearbyStores;
 
-    const filteredStores = stores.filter(store => {
-      const distance = calculateDistanceKm(
-        userLat,
-        userLng,
-        store.latitude,
-        store.longitude
-      );
-
-      console.log(`Store: ${store.store_name}, Distance: ${distance} km`);
-      return distance <= allowedRadiusKm;
-    });
-
-    return filteredStores;
   } catch (error) {
     throw error;
   }

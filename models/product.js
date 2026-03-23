@@ -18,6 +18,9 @@ const Product = sequelize.define(
     category_id: {
       type: DataTypes.INTEGER,
     },
+    subcategory: {
+      type: DataTypes.STRING(100),
+    },
 
     name: {
       type: DataTypes.STRING(255),
@@ -26,6 +29,14 @@ const Product = sequelize.define(
 
     description: {
       type: DataTypes.TEXT,
+    },
+    rating: {
+      type: DataTypes.DECIMAL(2, 1),
+      allowNull: true,
+      validate: {
+        min: 0,
+        max: 5,
+      },
     },
 
     image: {
