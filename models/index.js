@@ -24,6 +24,20 @@ Product.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
 Category.hasMany(Product, { foreignKey: "category_id", as: "products" });
 Product.belongsTo(Category, { foreignKey: "category_id", as: "category" });
 
+// Partner-Category associations (through Products)
+Partner.belongsToMany(Category, { 
+  through: Product, 
+  foreignKey: "partner_id", 
+  otherKey: "category_id", 
+  as: "categories" 
+});
+Category.belongsToMany(Partner, { 
+  through: Product, 
+  foreignKey: "category_id", 
+  otherKey: "partner_id", 
+  as: "partners" 
+});
+
 // Order associations
 Order.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
 Order.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });

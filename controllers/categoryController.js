@@ -17,8 +17,9 @@ const AddCategoryController = async (req, res) => {
 };
 
 const GetAllCategoriesController = async (req, res) => {
+  const { userLat, userLng } = req.body;
   try {
-    const categories = await GetAllCategories();
+    const categories = await GetAllCategories(userLat, userLng);
 
     res.status(200).json(categories);
   } catch (error) {
