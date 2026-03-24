@@ -79,7 +79,7 @@ const PlaceOrder = async (
 
     await t.commit();
     // 🔥 Send data to n8n (DO NOT use await for speed)
-    axios.post("https://n8n-service-ml5w.onrender.com/webhook-test/webhook/order", {
+    axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
         orderId: order.id,
         amount: order.final_amount,
         customer: customer_id,
