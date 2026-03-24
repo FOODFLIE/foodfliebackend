@@ -18,6 +18,7 @@ const {
   DeleteFeeController,
   CalculateDeliveryFeeController
 } = require("../controllers/admin/feeController");
+const { fetchAllStores, toggleStoreStatus } = require("../controllers/admin/adminStoreController");
 
 router.post("/login", AdminLoginController);
 router.get("/orders", adminAuth,getOrdersController);
@@ -39,5 +40,9 @@ router.post("/fees/calculate-delivery", CalculateDeliveryFeeController);
 
 // Customer analytics routes
 router.get("/customers/daily", adminAuth, getDailyCustomersController);
+
+// store management routes
+router.get("/stores", adminAuth, fetchAllStores);
+router.put("/stores/:id", adminAuth, toggleStoreStatus); // You can create a separate controller for fetching store by ID if needed
 
 module.exports = router;

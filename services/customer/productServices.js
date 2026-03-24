@@ -20,7 +20,7 @@ const GetPartnersByCategory = async (category_id) => {
           model: Partner,
           as: "partner",
 
-          attributes: ["id", "store_name", "address", "area","image"],
+          attributes: ["id", "store_name", "address", "area","image","is_active"],
         },
       ],
       attributes: [],
@@ -100,7 +100,9 @@ const GetAllStores = async (userLat, userLng) => {
         "image",
         "latitude",
         "longitude",
+        "is_active",
       ],
+   
       raw: true,
     });
 

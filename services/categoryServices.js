@@ -22,7 +22,8 @@ const GetAllCategories = async (userLat, userLng) => {
         {
           model: Partner,
           as: "partners",
-          attributes: ["latitude", "longitude"],
+          attributes: ["latitude", "longitude","is_active"],
+          
           through: { attributes: [] },
         },
       ],
