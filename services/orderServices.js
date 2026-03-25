@@ -81,6 +81,8 @@ const PlaceOrder = async (
     // 🔥 Send data to n8n (DO NOT use await for speed)
     axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
         orderId: order.id,
+        itemName: orderItems.map(item => item.item_name).join(", "),
+        quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
         amount: order.final_amount,
         customer: customer_id,
         phone: addressData.customer_phone,
