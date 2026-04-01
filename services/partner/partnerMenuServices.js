@@ -57,6 +57,7 @@ const GetProductById = async (id, partner_id) => {
 };
 
 const UpdateProduct = async (id, partner_id, productData) => {
+  console.log("productData in service:", productData);
   try {
     const product = await Product.findOne({ where: { id, partner_id } });
     
@@ -70,6 +71,7 @@ const UpdateProduct = async (id, partner_id, productData) => {
       price: productData.price,
       category_id: productData.category_id,
       image: productData.image,
+      subcategory: productData.subcategory,
       is_veg: productData.is_veg,
       preparation_time: productData.preparation_time,
       is_available: productData.is_available,
@@ -173,7 +175,7 @@ const GetSellerCategoryProducts = async (sellerId, categoryId, filters = {}) => 
       order: [["name", "ASC"]],
       attributes: [
         "id", "name", "description", "price", "image", 
-        "is_veg", "preparation_time", "is_available"
+        "is_veg", "preparation_time", "is_available","subcategory"
       ]
     });
 
