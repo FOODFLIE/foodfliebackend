@@ -2,8 +2,7 @@ const { Product, Partner } = require("../../models/index");
 const sequelize = require("../../config/sequelize");
 const { getFoodflieoptions } = require("../../utils/foodlieutils");
 const { getDistance } = require("../../utils/deliveryRadius");
-
-
+const ProductVariant = require("../../models/productVariant");
 
 const flies = getFoodflieoptions();
 const allowedRadiusKm = flies.allowed_distance;
@@ -20,7 +19,14 @@ const GetPartnersByCategory = async (category_id) => {
           model: Partner,
           as: "partner",
 
-          attributes: ["id", "store_name", "address", "area","image","is_active"],
+          attributes: [
+            "id",
+            "store_name",
+            "address",
+            "area",
+            "image",
+            "is_active",
+          ],
         },
       ],
       attributes: [],
@@ -55,11 +61,32 @@ const GetProductsByPartner = async (partner_id) => {
           model: Product,
           as: "products",
           where: { is_available: true },
-          attributes: ["id", "name", "image", "price", "sku", "category_id","rating", "description","is_veg","subcategory"],
           required: false,
+          attributes: [
+            "id",
+            "name",
+            "image",
+            "price",
+            "has_variants", // 🔥 important
+            "sku",
+            "category_id",
+            "rating",
+            "description",
+            "is_veg",
+            "subcategory",
+          ],
+          include: [
+            {
+              model: ProductVariant,
+              as: "variants",
+              attributes: ["id", "name", "price","sku", "is_available"],
+              required: false,
+            },
+          ],
         },
       ],
     });
+
     return partner;
   } catch (error) {
     throw error;
@@ -84,7 +111,6 @@ const GetProductBySKU = async (sku) => {
  * Get all stores
  */
 
-
 const GetAllStores = async (userLat, userLng) => {
   try {
     if (!userLat || !userLng) {
@@ -102,7 +128,7 @@ const GetAllStores = async (userLat, userLng) => {
         "longitude",
         "is_active",
       ],
-   
+
       raw: true,
     });
 
@@ -112,7 +138,7 @@ const GetAllStores = async (userLat, userLng) => {
           userLat,
           userLng,
           parseFloat(store.latitude),
-          parseFloat(store.longitude)
+          parseFloat(store.longitude),
         );
 
         return {
@@ -124,7 +150,6 @@ const GetAllStores = async (userLat, userLng) => {
       .sort((a, b) => a.distance - b.distance); // ✅ nearest first
 
     return nearbyStores;
-
   } catch (error) {
     throw error;
   }

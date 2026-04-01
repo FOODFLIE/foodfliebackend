@@ -1,4 +1,5 @@
 const Product = require("../../models/product");
+const ProductVariant = require("../../models/productVariant");
 const Category = require("../../models/category");
 const Partner = require("../../models/partner");
 const { Op } = require("sequelize");
@@ -37,7 +38,14 @@ const AddProduct = async (partner_id, productData) => {
 
 const GetAllProducts = async (partner_id) => {
   try {
-    const products = await Product.findAll({ where: { partner_id } });
+    const products = await Product.findAll({ 
+      where: { partner_id },
+      include: [{
+        model: ProductVariant,
+        as: 'variants',
+        attributes: ['id', 'name', 'price', 'is_available']
+      }]
+    });
     return products;
   } catch (error) {
     throw error;
@@ -46,7 +54,14 @@ const GetAllProducts = async (partner_id) => {
 
 const GetProductById = async (id, partner_id) => {
   try {
-    const product = await Product.findOne({ where: { id, partner_id } });
+    const product = await Product.findOne({ 
+      where: { id, partner_id },
+      include: [{
+        model: ProductVariant,
+        as: 'variants',
+        attributes: ['id', 'name', 'price', 'is_available']
+      }]
+    });
     if (!product) {
       throw new Error("Product not found or you don't have permission to access it");
     }
@@ -170,12 +185,17 @@ const GetSellerCategoryProducts = async (sellerId, categoryId, filters = {}) => 
           model: Category,
           as: "category",
           attributes: ["id", "name"]
+        },
+        {
+          model: ProductVariant,
+          as: 'variants',
+          attributes: ['id', 'name', 'price', 'is_available']
         }
       ],
       order: [["name", "ASC"]],
       attributes: [
         "id", "name", "description", "price", "image", 
-        "is_veg", "preparation_time", "is_available","subcategory"
+        "is_veg", "preparation_time", "is_available","subcategory", "has_variants"
       ]
     });
 
