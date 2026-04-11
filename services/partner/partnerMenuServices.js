@@ -91,6 +91,20 @@ const UpdateProduct = async (id, partner_id, productData) => {
       preparation_time: productData.preparation_time,
       is_available: productData.is_available,
     });
+
+    if(productData.variants) {
+      for (const variant of productData.variants) {
+        await ProductVariant.update({
+          name: variant.name,
+          price: variant.price,
+
+
+        },
+      {
+        where: { id: variant.id, product_id: id }
+      })
+      }
+    }
     
     return product;
   } catch (error) {
