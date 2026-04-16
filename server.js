@@ -46,6 +46,10 @@ app.use("/api/partner/menu", partnerProductRoutes)
 app.use("/api/partner/store", partnerStoreRoutes)
 app.use("/api/partner/orders", partnerOrderRoutes)
 
+app.get("/", (req, res) => {
+  res.send("FoodFie Backend Server is Running");
+});
+
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server is running on port 5000");
 });
