@@ -1,5 +1,6 @@
 const { Pool } = require("pg");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
+
 const flies = getFoodflieoptions();
 
 const pool = new Pool({
@@ -8,18 +9,25 @@ const pool = new Pool({
   database: flies.database,
   password: flies.password,
   port: flies.port,
+
+  // ✅ ADD THIS (important fix)
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
 });
+
+// Test connection
 (async () => {
   try {
     await pool.connect();
-    console.log("Connected to database");
+    console.log("✅ Connected to database");
 
-    // This query proves we can actually read from the database
     const res = await pool.query("SELECT NOW()");
-    console.log("Database test query successful:", res.rows[0].now);
+    console.log("✅ Database test query successful:", res.rows[0].now);
   } catch (error) {
-    console.error("Database connection error:", error.message);
+    console.error("❌ Database connection error:", error.message);
   }
-})(); // The "()" here is essential to execute the connection check
+})();
 
 module.exports = pool;
