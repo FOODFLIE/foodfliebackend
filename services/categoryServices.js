@@ -22,7 +22,8 @@ const GetAllCategories = async (userLat, userLng) => {
         {
           model: Partner,
           as: "partners",
-          attributes: ["latitude", "longitude"],
+          attributes: ["latitude", "longitude","is_active"],
+          
           through: { attributes: [] },
         },
       ],
@@ -38,7 +39,7 @@ const GetAllCategories = async (userLat, userLng) => {
             parseFloat(partner.latitude),
             parseFloat(partner.longitude),
           );
-
+console.log("distance",distance)
           return distance <= allowedRadiusKm;
         })
       );

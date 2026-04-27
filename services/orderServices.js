@@ -7,14 +7,19 @@ const Address = require("../models/address");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
 const { autoAssignOrder } = require("./rider/riderOrderServices");
 const { sendOrderConfirmation } = require("../utils/twilioService");
+const axios = require("axios");
 
 const flies = getFoodflieoptions();
 
 const return_url = flies.return_url;
 //  Place order from cart
 
-const PlaceOrder = async (customer_id, addressData, payment_method = "COD", cooking_instructions = null) => {
- 
+const PlaceOrder = async (
+  customer_id,
+  addressData,
+  payment_method = "COD",
+  cooking_instructions = null,
+) => {
   const t = await sequelize.transaction();
 
   try {
@@ -73,7 +78,19 @@ const PlaceOrder = async (customer_id, addressData, payment_method = "COD", cook
     await cart.destroy({ transaction: t });
 
     await t.commit();
-
+    // 🔥 Send data to n8n (DO NOT use await for speed)
+    axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
+        orderId: order.id,
+        itemName: orderItems.map(item => item.item_name).join(", "),
+        quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+        amount: order.final_amount,
+        customer: customer_id,
+        phone: addressData.customer_phone,
+        address: order.address,
+      })
+      .catch((err) => {
+        console.error("n8n webhook failed:", err.message);
+      });
     // Send WhatsApp notification
     if (addressData.receiverNumber) {
       try {

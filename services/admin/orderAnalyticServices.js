@@ -22,20 +22,19 @@ const getOrders = async () => {
 };
 const getDailyCustomers = async () => {
   try {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const customers = await Customer.findAll({
+    const count = await Customer.count({
       where: {
         created_at: {
           [Op.between]: [startOfDay, endOfDay],
         },
       },
     });
-    return customers.length;
+    
+    return count;
   } catch (error) {
     console.error("Error fetching daily customers:", error);
     throw error;

@@ -11,6 +11,8 @@ const orderRoutes = require("./routes/orderRoutes");
 const addressRoutes = require("./routes/customer/addressRoutes");
 const riderRoutes = require("./routes/rider/riderRoutes");
 const partnerProductRoutes = require("./routes/partner/partnerProductRoutes");
+const partnerStoreRoutes = require("./routes/partner/partnerStoreRoutes");
+const partnerOrderRoutes = require("./routes/partner/partnerOrderRoutes");
 
 const app = express();
 
@@ -41,6 +43,12 @@ app.use("/api/order", orderRoutes)
 app.use("/api/address", addressRoutes)
 app.use("/api/rider", riderRoutes)
 app.use("/api/partner/menu", partnerProductRoutes)
+app.use("/api/partner/store", partnerStoreRoutes)
+app.use("/api/partner/orders", partnerOrderRoutes)
+
+app.get("/", (req, res) => {
+  res.send("FoodFie Backend Server is Running");
+});
 
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server is running on port 5000");

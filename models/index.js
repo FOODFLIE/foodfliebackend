@@ -2,6 +2,7 @@ const Cart = require("./cart");
 const CartItem = require("./cartItems");
 const Partner = require("./partner");
 const Product = require("./product");
+const ProductVariant = require("./productVariant");
 const Customer = require("./customer");
 const Order = require("./order");
 const OrderItem = require("./order_item");
@@ -38,6 +39,10 @@ Category.belongsToMany(Partner, {
   as: "partners" 
 });
 
+// Product-ProductVariant associations
+Product.hasMany(ProductVariant, { foreignKey: "product_id", as: "variants" });
+ProductVariant.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+
 // Order associations
 Order.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
 Order.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
@@ -51,6 +56,7 @@ module.exports = {
   CartItem, 
   Partner, 
   Product, 
+  ProductVariant,
   Customer, 
   Order, 
   OrderItem, 

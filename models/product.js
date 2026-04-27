@@ -48,6 +48,10 @@ const Product = sequelize.define(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+    has_variants: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
 
     sku: {
       type: DataTypes.STRING,
