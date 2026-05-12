@@ -30,7 +30,8 @@ const GetAllCategoriesController = async (req, res) => {
 const GetCategoryByIdController = async (req, res) => {
   try {
     const { id } = req.params;
-    const category = await GetCategoryById(id);
+    const { userLat, userLng } = req.body;
+    const category = await GetCategoryById(id, userLat, userLng);
     res.status(200).json(category);
   } catch (error) {
     res.status(500).json({ message: error.message });
