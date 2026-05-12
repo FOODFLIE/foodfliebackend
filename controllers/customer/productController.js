@@ -7,8 +7,14 @@ const {
 
 const GetPartnersByCategoryController = async (req, res) => {
   try {
-    const { category_id } = req.query;
-    const products = await GetPartnersByCategory(category_id);
+    const category_id = req.params.category_id || req.query.category_id;
+    const { userLat, userLng } = req.body;
+    
+    if (!category_id) {
+      return res.status(400).json({ message: "category_id is required" });
+    }
+    
+    const products = await GetPartnersByCategory(category_id, parseFloat(userLat), parseFloat(userLng));
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });

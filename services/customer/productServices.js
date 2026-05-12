@@ -10,7 +10,7 @@ const allowedRadiusKm = flies.allowed_distance;
 /**
  * Get partners by category
  */
-const GetPartnersByCategory = async (category_id) => {
+const GetPartnersByCategory = async (category_id, userLat, userLng) => {
   try {
     const products = await Product.findAll({
       where: { category_id, is_available: true },
@@ -18,13 +18,14 @@ const GetPartnersByCategory = async (category_id) => {
         {
           model: Partner,
           as: "partner",
-
           attributes: [
             "id",
             "store_name",
             "address",
             "area",
             "image",
+            "latitude",
+            "longitude",
             "is_active",
           ],
         },
@@ -42,6 +43,27 @@ const GetPartnersByCategory = async (category_id) => {
         uniquePartners.push(product.partner);
       }
     });
+
+    // Filter by radius if user location provided
+    if (userLat && userLng) {
+      const filteredPartners = uniquePartners
+        .map((partner) => {
+          const distance = getDistance(
+            userLat,
+            userLng,
+            parseFloat(partner.latitude),
+            parseFloat(partner.longitude)
+          );
+          return {
+            ...partner.toJSON(),
+            distance
+          };
+        })
+        .filter((partner) => partner.distance <= allowedRadiusKm && partner.is_active)
+        .sort((a, b) => a.distance - b.distance);
+
+      return filteredPartners;
+    }
 
     return uniquePartners;
   } catch (error) {
