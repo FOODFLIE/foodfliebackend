@@ -51,36 +51,9 @@ console.log("distance",distance)
   }
 };
 
-const GetCategoryById = async (id, userLat, userLng) => {
+const GetCategoryById = async (id) => {
   try {
-    const category = await Category.findByPk(id, {
-      include: [
-        {
-          model: Partner,
-          as: "partners",
-          attributes: ["id", "store_name", "latitude", "longitude", "is_active"],
-          through: { attributes: [] },
-        },
-      ],
-    });
-
-    if (!category) {
-      throw new Error("Category not found");
-    }
-
-    // Filter partners within radius
-    if (userLat && userLng && category.partners) {
-      category.partners = category.partners.filter((partner) => {
-        const distance = getDistance(
-          userLat,
-          userLng,
-          parseFloat(partner.latitude),
-          parseFloat(partner.longitude)
-        );
-        return distance <= allowedRadiusKm && partner.is_active;
-      });
-    }
-
+    const category = await Category.findByPk(id);
     return category;
   } catch (error) {
     throw error;
