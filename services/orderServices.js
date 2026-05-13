@@ -104,7 +104,7 @@ const PlaceOrder = async (
     // Send n8n webhook (non-blocking)
     axios
       .post(
-        "https://n8n-service-ml5w.onrender.com/webhook-test/webhook/order",
+        "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
         {
           orderId: order.id,
           itemName: orderItems
