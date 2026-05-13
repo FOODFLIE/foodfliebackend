@@ -2,6 +2,7 @@ const Order = require("../models/order");
 const OrderItem = require("../models/order_item");
 const Cart = require("../models/cart");
 const CartItem = require("../models/cartItems");
+const Partner = require("../models/partner");
 const sequelize = require("../config/sequelize");
 const Address = require("../models/address");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
@@ -77,12 +78,21 @@ const PlaceOrder = async (
     // Delete cart
     await cart.destroy({ transaction: t });
 
+    // Fetch partner/store details
+    const partner = await Partner.findByPk(cart.partner_id, {
+      attributes: ["id", "store_name", "phone"],
+      transaction: t
+    });
+
     await t.commit();
+    
     // 🔥 Send data to n8n (DO NOT use await for speed)
     axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
         orderId: order.id,
         itemName: orderItems.map(item => item.item_name).join(", "),
         quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+        storeName: partner?.store_name || "Unknown Store",
+        storePhone: partner?.phone || "N/A",
         amount: order.final_amount,
         customer: customer_id,
         phone: addressData.customer_phone,
