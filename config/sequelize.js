@@ -16,10 +16,10 @@ const sequelize = new Sequelize(flies.database, flies.user, flies.password, {
     idle: 10000,
   },
   dialectOptions: {
-    // ssl: {
-    //   require: true,
-    //   rejectUnauthorized: false,
-    // },
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
     connectTimeout: 60000,
   },
   retry: {
