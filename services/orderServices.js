@@ -38,7 +38,9 @@ const PlaceOrder = async (
       transaction: t,
     });
 
-    if (cartItems.length === 0) throw new Error("Cart is empty");
+    if (cartItems.length === 0) {
+      throw new Error("Cart is empty");
+    }
 
     // Create order
     const order = await Order.create(
@@ -51,7 +53,9 @@ const PlaceOrder = async (
         status: "placed",
         payment_method,
         payment_status: "pending",
-        address: addressData.fullAddress || addressData.coords?.address,
+        address:
+          addressData.fullAddress ||
+          addressData.coords?.address,
         customer_phone: addressData.customer_phone,
         latitude: addressData.latitude,
         longitude: addressData.longitude,
@@ -60,7 +64,7 @@ const PlaceOrder = async (
       { transaction: t },
     );
 
-    // Create order items from cart items
+    // Create order items
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       menu_item_id: item.product_id,
@@ -70,52 +74,82 @@ const PlaceOrder = async (
       total_price: item.total_price,
     }));
 
-    await OrderItem.bulkCreate(orderItems, { transaction: t });
-
-    // Delete cart items
-    await CartItem.destroy({ where: { cart_id: cart.id }, transaction: t });
-
-    // Delete cart
-    await cart.destroy({ transaction: t });
-
-    // Fetch partner/store details
-    const partner = await Partner.findByPk(cart.partner_id, {
-      attributes: ["id", "store_name", "phone"],
-      transaction: t
+    await OrderItem.bulkCreate(orderItems, {
+      transaction: t,
     });
 
-    await t.commit();
-    
-    // 🔥 Send data to n8n (DO NOT use await for speed)
-    axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
-        orderId: order.id,
-        itemName: orderItems.map(item => item.item_name).join(", "),
-        quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
-        storeName: partner?.store_name || "Unknown Store",
-        storePhone: partner?.phone || "N/A",
-        amount: order.final_amount,
-        customer: customer_id,
-        phone: addressData.customer_phone,
-        address: order.address,
-      })
-      .catch((err) => {
-        console.error("n8n webhook failed:", err.message);
-      });
-    // Send WhatsApp notification
-    if (addressData.receiverNumber) {
-      try {
-        await sendOrderConfirmation(addressData.receiverNumber, order.id);
-      } catch (error) {
-        console.error("WhatsApp notification failed:", error.message);
+    // Delete cart items
+    await CartItem.destroy({
+      where: { cart_id: cart.id },
+      transaction: t,
+    });
+
+    // Delete cart
+    await cart.destroy({
+      transaction: t,
+    });
+
+    // Fetch partner/store details
+    const partner = await Partner.findByPk(
+      cart.partner_id,
+      {
+        attributes: ["id", "store_name", "phone"],
+        transaction: t,
       }
+    );
+
+    // Commit transaction early
+    await t.commit();
+
+    // Send n8n webhook (non-blocking)
+    axios
+      .post(
+        "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
+        {
+          orderId: order.id,
+          itemName: orderItems
+            .map((item) => item.item_name)
+            .join(", "),
+          quantity: orderItems.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          ),
+          storeName:
+            partner?.store_name || "Unknown Store",
+          storePhone: partner?.phone || "N/A",
+          amount: order.final_amount,
+          customer: customer_id,
+          phone: addressData.customer_phone,
+          address: order.address,
+        }
+      )
+      .catch((err) => {
+        console.error(
+          "n8n webhook failed:",
+          err.message
+        );
+      });
+
+    // WhatsApp notification (non-blocking)
+    if (addressData.receiverNumber) {
+      sendOrderConfirmation(
+        addressData.receiverNumber,
+        order.id
+      ).catch((err) => {
+        console.error(
+          "WhatsApp notification failed:",
+          err.message
+        );
+      });
     }
 
-    // Auto-assign rider after order is placed
-    try {
-      await autoAssignOrder(order.id);
-    } catch (error) {
-      console.error("Rider assignment failed:", error.message);
-    }
+    // Rider assignment (non-blocking)
+    autoAssignOrder(order.id).catch((err) => {
+      console.error(
+        "Rider assignment failed:",
+        err.message
+      );
+    });
 
     return {
       success: true,
@@ -124,9 +158,13 @@ const PlaceOrder = async (
       redirect_url: return_url + `/${order.id}`,
     };
   } catch (error) {
-    console.error("PlaceOrder - Error:", error.message);
-    console.error("PlaceOrder - Error details:", error);
+    console.error(
+      "PlaceOrder - Error:",
+      error.message
+    );
+
     await t.rollback();
+
     throw error;
   }
 };
