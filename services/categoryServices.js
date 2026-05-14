@@ -70,7 +70,7 @@ const GetAllCategories = async (userLat, userLng) => {
             parseFloat(partner.latitude),
             parseFloat(partner.longitude),
           );
-          console.log("distance",distance);
+          console.log("distancee",distance);
           return distance <= allowedRadiusKm;
         })
       );
