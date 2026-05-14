@@ -17,6 +17,37 @@ const AddCategory = async (name, partner_id) => {
 
 const GetAllCategories = async (userLat, userLng) => {
   try {
+    // Log user location details (non-blocking)
+    if (userLat && userLng) {
+      console.log(`User Location - Latitude: ${userLat}, Longitude: ${userLng}`);
+      
+      // Reverse geocoding in background (don't await)
+      const axios = require('axios');
+      axios.get(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'FoodFlieApp/1.0'
+          }
+        }
+      )
+      .then(geoResponse => {
+        if (geoResponse.data && geoResponse.data.address) {
+          const address = geoResponse.data.address;
+          const area = address.suburb || address.neighbourhood || address.road || 'Unknown Area';
+          const city = address.city || address.town || address.village || address.state_district || 'Unknown City';
+          const state = address.state || '';
+          
+          console.log(`📍 User Area: ${area}`);
+          console.log(`🏙️  User City: ${city}`);
+          if (state) console.log(`📌 State: ${state}`);
+        }
+      })
+      .catch(geoError => {
+        console.log('⚠️  Could not fetch location details:', geoError.message);
+      });
+    }
+
     const categories = await Category.findAll({
       include: [
         {
@@ -39,7 +70,6 @@ const GetAllCategories = async (userLat, userLng) => {
             parseFloat(partner.latitude),
             parseFloat(partner.longitude),
           );
-console.log("distance",distance)
           return distance <= allowedRadiusKm;
         })
       );
