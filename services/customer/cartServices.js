@@ -64,9 +64,19 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
       }, { transaction: t });
     }
 
-    // 5️⃣ Enforce single restaurant
+    // 5️⃣ Enforce single restaurant - but allow replacement
     if (cart.partner_id !== product.partner_id) {
-      throw new Error("You can order from only one restaurant at a time");
+      // Clear existing cart items
+      await CartItem.destroy({
+        where: { cart_id: cart.id },
+        transaction: t
+      });
+      
+      // Update cart to new restaurant
+      cart.partner_id = product.partner_id;
+      cart.subtotal = 0;
+      cart.total = 0;
+      await cart.save({ transaction: t });
     }
 
     // 6️⃣ Find cart item (product + variant aware)
@@ -136,7 +146,7 @@ const GetCart = async (customer_id) => {
       ],
       attributes: ["id", "customer_id", "partner_id", "subtotal", "delivery_fee", "total", "status"]
     });
-    
+    console.log("Fetched cart:", JSON.stringify(cart, null, 2));
     if (!cart) return null;
     
     // Recalculate totals if they seem incorrect
