@@ -71,6 +71,7 @@ const PlaceOrder = async (
       item_name: item.product_name,
       quantity: item.quantity,
       price: item.price,
+      variant: item.variant,
       total_price: item.total_price,
     }));
 
