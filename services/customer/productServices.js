@@ -101,7 +101,7 @@ const GetProductsByPartner = async (partner_id) => {
             {
               model: ProductVariant,
               as: "variants",
-              attributes: ["id", "name", "price", "is_available"],
+              attributes: ["id", "name", "price", "is_available","sku"],
               required: false,
               where: { is_available: true },
               separate: true,

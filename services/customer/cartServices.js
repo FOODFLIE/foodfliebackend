@@ -18,10 +18,11 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
   try {
     // 1️⃣ Try to find product directly
     let product = await Product.findOne({
-      where: { sku, is_available: true },
+      where: { sku, is_available: true,has_variants:false },
       attributes: ["id", "name", "price", "partner_id"],
       transaction: t
     });
+
 
     let variant = null;
 
@@ -32,6 +33,7 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
         attributes: ["id", "product_id", "price", "name"],
         transaction: t
       });
+     
 
       if (!variant) throw new Error("Product unavailable");
 
@@ -45,8 +47,11 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
     // 3️⃣ Final values
     const finalProductId = product.id;
     const finalVariantId = variant ? variant.id : null;
+    const finalVariantName = variant ? variant.name : null;
     const finalPrice = variant ? variant.price : product.price;
-    const finalName = product.name;
+    const finalName = variant ? `${product.name} - ${variant.name}` : product.name;
+
+    
 
     // 4️⃣ Find cart
     let cart = await Cart.findOne({
@@ -80,14 +85,22 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
     }
 
     // 6️⃣ Find cart item (product + variant aware)
+    const whereClause = {
+      cart_id: cart.id,
+      product_id: finalProductId
+    };
+
+    if (finalVariantName) {
+      whereClause.variant = finalVariantName;
+    } else {
+      whereClause.variant = null;
+    }
+
     let cartItem = await CartItem.findOne({
-      where: {
-        cart_id: cart.id,
-        product_id: finalProductId,
-        // variant_id: finalVariantId
-      },
+      where: whereClause,
       transaction: t
     });
+
 
     const addedAmount = finalPrice * quantity;
     let cartItemId = null;
@@ -96,7 +109,7 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
       cartItem = await CartItem.create({
         cart_id: cart.id,
         product_id: finalProductId,
-        // variant_id: finalVariantId,
+        variant: finalVariantName,
         product_name: finalName,
         price: finalPrice,
         quantity,
@@ -110,12 +123,14 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
       cartItemId = cartItem.id;
     }
 
-    // 7️⃣ Incremental cart update (NO aggregation)
-    cart.subtotal += addedAmount;
+    // 7️⃣ Incremental cart update
+    cart.subtotal = parseFloat(cart.subtotal || 0) + parseFloat(addedAmount);
     cart.delivery_fee = delivery_fee;
-    cart.total = cart.subtotal + Number(cart.delivery_fee);
+    cart.total = parseFloat(cart.subtotal) + parseFloat(cart.delivery_fee);
 
     await cart.save({ transaction: t });
+
+    console.log("Updated cart totals:", { subtotal: cart.subtotal, delivery_fee: cart.delivery_fee, total: cart.total });
 
     await t.commit();
 
