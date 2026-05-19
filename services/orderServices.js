@@ -103,33 +103,47 @@ const PlaceOrder = async (
     await t.commit();
 
     // Send n8n webhook (non-blocking)
-    axios
-      .post(
-        "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
-        {
-          orderId: order.id,
-          itemName: orderItems
-            .map((item) => item.item_name)
-            .join(", "),
-          quantity: orderItems.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          ),
-          storeName:
-            partner?.store_name || "Unknown Store",
-          storePhone: partner?.phone || "N/A",
-          amount: order.final_amount,
-          customer: customer_id,
-          phone: addressData.customer_phone,
-          address: order.address,
-        }
-      )
-      .catch((err) => {
-        console.error(
-          "n8n webhook failed:",
-          err.message
-        );
-      });
+ axios
+  .post(
+    "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
+    {
+      orderId: order.id,
+
+      items: orderItems.map((item) => ({
+        item_name:
+          item.item_name || item.product_name,
+
+        variant: item.variant || null,
+
+        quantity: item.quantity,
+
+        total_price: item.total_price,
+      })),
+
+      storeName:
+        partner?.store_name || "Unknown Store",
+
+      storePhone:
+        partner?.phone || "N/A",
+
+      amount: order.final_amount,
+
+      customer: customer_id,
+
+      phone: addressData.customer_phone,
+
+      address: order.address,
+    }
+  )
+  .then(() => {
+    console.log("n8n webhook sent successfully");
+  })
+  .catch((err) => {
+    console.error(
+      "n8n webhook failed:",
+      err.message
+    );
+  });
 
     // WhatsApp notification (non-blocking)
     if (addressData.receiverNumber) {
