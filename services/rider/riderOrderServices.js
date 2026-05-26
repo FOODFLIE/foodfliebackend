@@ -70,7 +70,7 @@ const getRiderOrders = async (rider_id) => {
       include: [
         {
           model: OrderItem,
-          attributes: ["id", "item_name", "total_price"],
+          attributes: ["id", "item_name", "total_price","quantity","variant"],
           as: "items"
         },
         {

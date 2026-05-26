@@ -13,6 +13,7 @@ const riderRoutes = require("./routes/rider/riderRoutes");
 const partnerProductRoutes = require("./routes/partner/partnerProductRoutes");
 const partnerStoreRoutes = require("./routes/partner/partnerStoreRoutes");
 const partnerOrderRoutes = require("./routes/partner/partnerOrderRoutes");
+const kotRoutes = require("./routes/kotRoutes");
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/rider", riderRoutes)
 app.use("/api/partner/menu", partnerProductRoutes)
 app.use("/api/partner/store", partnerStoreRoutes)
 app.use("/api/partner/orders", partnerOrderRoutes)
+app.use("/api/kot", kotRoutes);
 
 app.get("/", (req, res) => {
   res.send("FoodFie Backend Server is Running");
