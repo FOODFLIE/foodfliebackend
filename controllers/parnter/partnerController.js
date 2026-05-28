@@ -1,4 +1,4 @@
-const { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller } = require("../../services/partner/partnerLoginServices");
+const { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller, LoginSeller } = require("../../services/partner/partnerLoginServices");
 
 const SendOTPController = async (req, res) => {
   try {
@@ -30,4 +30,14 @@ const RegisterSellerController = async (req, res) => {
   }
 };
 
-module.exports = { SendOTPController, VerifyOTPController, RegisterSellerController };
+const LoginSellerController = async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const result = await LoginSeller(phone, password);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ message: error.message });
+  }
+};
+
+module.exports = { SendOTPController, VerifyOTPController, RegisterSellerController, LoginSellerController };

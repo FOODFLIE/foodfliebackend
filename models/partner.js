@@ -33,6 +33,11 @@ const Partner = sequelize.define(
       allowNull: true,
     },
 
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+
     address: {
       type: DataTypes.TEXT,
       allowNull: true,

@@ -2,6 +2,7 @@ const Partner = require("../../models/partner");
 const PartnerDocument = require("../../models/partnerDocuments");
 const sequelize = require("../../config/sequelize");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 const otpStore = new Map();
 
@@ -103,4 +104,33 @@ const RegisterSeller = async (data) => {
   }
 };
 
-module.exports = { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller };
+const LoginSeller = async (phone, password) => {
+  try {
+    const seller = await Partner.findOne({ where: { phone } });
+    
+    if (!seller) {
+      throw new Error("Seller not found");
+    }
+
+    if (!seller.password) {
+      throw new Error("Password not set. Please use OTP login.");
+    }
+
+    const isMatch = await bcrypt.compare(password, seller.password);
+    if (!isMatch) {
+      throw new Error("Invalid password");
+    }
+
+    const token = jwt.sign(
+      { id: seller.id, phone: seller.phone, role: "seller" },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    return { token, seller };
+  } catch (error) {
+    throw error;
+  }
+};
+
+module.exports = { SendOTPForSeller, VerifyOTPForSeller, RegisterSeller, LoginSeller };
