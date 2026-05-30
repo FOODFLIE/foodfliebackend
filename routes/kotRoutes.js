@@ -8,6 +8,7 @@ router.get("/:order_id", sellerAuth, getKOTData);
 
 // Get ESC/POS formatted KOT for thermal printer
 router.get("/:order_id/print", sellerAuth, getESCPOSKOT);
+router.post("/:order_id/print", sellerAuth, getESCPOSKOT);
 
 // Get text formatted KOT
 router.get("/:order_id/text", sellerAuth, getTextKOT);
