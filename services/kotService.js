@@ -64,9 +64,6 @@ const generateESCPOS = (kotData) => {
   receipt += kotData.storeName.toUpperCase() + "\n";
   receipt += ESC + "E" + "\x00";
 
-  if (kotData.storePhone) {
-    receipt += kotData.storePhone + "\n";
-  }
 
   receipt += "===============================================\n";
 
@@ -74,7 +71,7 @@ const generateESCPOS = (kotData) => {
   receipt += ESC + "E" + "\x01"; // Bold ON
   receipt += GS + "!" + "\x11"; // Double height and width
   receipt += "\n";
-  receipt += `KOT #${kotData.orderNumber}\n`;
+  receipt += `Food Flie #${kotData.orderNumber}\n`;
   receipt += "\n";
   receipt += GS + "!" + "\x00"; // Normal size
   receipt += ESC + "E" + "\x00"; // Bold OFF
@@ -85,7 +82,7 @@ const generateESCPOS = (kotData) => {
   receipt += ESC + "a" + "\x00";
 
   receipt += `Date : ${kotData.orderDate}\n`;
-  receipt += `Phone: ${kotData.customerPhone}\n`;
+ 
 
   receipt += "===============================================\n";
 
