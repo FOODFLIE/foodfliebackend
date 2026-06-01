@@ -8,11 +8,14 @@ const Address = require("../models/address");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
 const { autoAssignOrder } = require("./rider/riderOrderServices");
 const { sendOrderConfirmation } = require("../utils/twilioService");
+const { getDistance } = require("../utils/deliveryRadius");
 const axios = require("axios");
 
 const flies = getFoodflieoptions();
 
 const return_url = flies.return_url;
+const delivery_fee = flies.delivery_fee;
+const max_delivery_fee = flies.max_delivery_fee;
 //  Place order from cart
 
 const PlaceOrder = async (
@@ -32,6 +35,28 @@ const PlaceOrder = async (
 
     if (!cart) throw new Error("Cart is empty");
 
+    // Fetch partner location
+    const partner = await Partner.findByPk(cart.partner_id, {
+      attributes: ["id", "store_name", "phone", "latitude", "longitude"],
+      transaction: t,
+    });
+
+    if (!partner) throw new Error("Partner not found");
+
+    // Calculate delivery fee based on distance
+    let calculatedDeliveryFee = delivery_fee;
+    if (addressData.latitude && addressData.longitude && partner.latitude && partner.longitude) {
+      const distance = getDistance(
+        addressData.latitude,
+        addressData.longitude,
+        partner.latitude,
+        partner.longitude
+      );
+      calculatedDeliveryFee = distance > 2 ? max_delivery_fee : delivery_fee;
+    }
+
+    const finalAmount = parseFloat(cart.subtotal) + parseFloat(calculatedDeliveryFee);
+
     // Get cart items
     const cartItems = await CartItem.findAll({
       where: { cart_id: cart.id },
@@ -48,8 +73,8 @@ const PlaceOrder = async (
         customer_id,
         partner_id: cart.partner_id,
         total_amount: cart.subtotal,
-        delivery_fee: cart.delivery_fee,
-        final_amount: cart.total,
+        delivery_fee: calculatedDeliveryFee,
+        final_amount: finalAmount,
         status: "placed",
         payment_method,
         payment_status: "pending",
@@ -89,15 +114,6 @@ const PlaceOrder = async (
     await cart.destroy({
       transaction: t,
     });
-
-    // Fetch partner/store details
-    const partner = await Partner.findByPk(
-      cart.partner_id,
-      {
-        attributes: ["id", "store_name", "phone"],
-        transaction: t,
-      }
-    );
 
     // Commit transaction early
     await t.commit();

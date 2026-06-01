@@ -149,64 +149,52 @@ const generateTextKOT = (kotData) => {
   kot += `${kotData.storeName.toUpperCase()}\n`;
 
   if (kotData.storeAddress) {
-    kot += `${kotData.storeAddress}\n`;
+    const addressLines = kotData.storeAddress.match(/.{1,32}/g) || [];
+    addressLines.forEach(line => {
+      kot += `${line}\n`;
+    });
   }
 
   kot += "\n";
 
   kot += `Date : ${kotData.orderDate}\n`;
-  kot += `KOT# ${kotData.orderNumber}\n`;
+  kot += `FoodFlie #${kotData.orderNumber}\n`;
 
-  kot += "========================================\n";
-
-  kot += "Qty  Items                     Amount\n";
-  kot += "========================================\n";
+  kot += "--------------------------------\n";
+  kot += "QTY ITEM                AMOUNT\n";
+  kot += "--------------------------------\n";
 
   kotData.items.forEach((item) => {
-    const qty = String(item.quantity).padEnd(4);
+    const qty = String(item.quantity);
 
-    const price = `₹${item.price.toFixed(2)}`;
+    const name =
+      item.name.length > 18
+        ? item.name.substring(0, 18)
+        : item.name;
 
-    if (item.name.length > 24) {
-      const line1 = item.name.substring(0, 24);
-      const line2 = item.name.substring(24);
+    const amount = `Rs.${item.price.toFixed(0)}`;
 
-      kot +=
-        qty +
-        line1.padEnd(24) +
-        price.padStart(10) +
-        "\n";
+    kot += `${qty.padEnd(3)} ${name.padEnd(18)} ${amount.padStart(7)}\n`;
 
-      kot +=
-        "    " +
-        line2 +
-        "\n";
-    } else {
-      kot +=
-        qty +
-        item.name.padEnd(24) +
-        price.padStart(10) +
-        "\n";
+    if (item.name.length > 18) {
+      kot += `    ${item.name.substring(18)}\n`;
     }
   });
 
   kot += "\n";
+  kot += "--------------------------------\n";
+  kot += "BILL SUMMARY\n";
+  kot += "--------------------------------\n";
 
-  kot += "========================================\n";
-  kot += "Bill Summary\n";
-  kot += "========================================\n";
+  kot += `Item Total${`Rs.${kotData.totalAmount.toFixed(2)}`.padStart(20)}\n`;
+  kot += `SGST${"Rs.0.00".padStart(26)}\n`;
+  kot += `CGST${"Rs.0.00".padStart(26)}\n`;
 
-  kot += `Item Total${" ".repeat(18)}₹${kotData.totalAmount.toFixed(2)}\n`;
+  kot += "--------------------------------\n";
 
-  kot += `SGST${" ".repeat(24)}₹0.00\n`;
-  kot += `CGST${" ".repeat(24)}₹0.00\n`;
-
-  kot += "----------------------------------------\n";
-
-  kot += `Grand Total${" ".repeat(17)}₹${kotData.totalAmount.toFixed(2)}\n`;
+  kot += `Grand Total${`Rs.${kotData.totalAmount.toFixed(2)}`.padStart(19)}\n`;
 
   kot += "\n";
-
   kot += `Payment : ${kotData.paymentMethod}\n`;
 
   if (
