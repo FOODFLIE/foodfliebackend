@@ -1,4 +1,5 @@
 const Order = require("../../models/order");
+const { autoAssignOrder } = require("../rider/riderOrderServices");
 
 const verifyOrderPayment = async (orderId) => {
   try {
@@ -18,6 +19,10 @@ const verifyOrderPayment = async (orderId) => {
 
     order.payment_status = "completed";
     await order.save();
+
+    // Execute Driver Proximity Assignment Logic loops after payment is verified
+    autoAssignOrder(order.id)
+      .catch(err => console.error("Delayed Rider routing automation assignment loop issue:", err.message));
 
     return {
       success: true,

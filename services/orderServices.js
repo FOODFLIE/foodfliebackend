@@ -178,9 +178,7 @@ const verifyAndLinkPayment = async ({ orderId, customer_id, utr }) => {
       .catch(err => console.error("Delayed WhatsApp confirmation alert failed:", err.message));
   }
 
-  // C. Execute Driver Proximity Assignment Logic loops
-  autoAssignOrder(order.id)
-    .catch(err => console.error("Delayed Rider routing automation assignment loop issue:", err.message));
+
 
   return {
     success: true,
