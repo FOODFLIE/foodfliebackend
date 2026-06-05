@@ -30,6 +30,7 @@ const GetAllCategoriesController = async (req, res) => {
 const GetCategoryByIdController = async (req, res) => {
   try {
     const { id } = req.params;
+    
     const category = await GetCategoryById(id);
     res.status(200).json(category);
   } catch (error) {

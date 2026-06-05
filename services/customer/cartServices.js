@@ -3,6 +3,7 @@ const CartItem = require("../../models/cartItems");
 const Product = require("../../models/product");
 const sequelize = require("../../config/sequelize");
 const { getFoodflieoptions } = require("../../utils/foodlieutils");
+const ProductVariant = require("../../models/productVariant");
 
 const flies = getFoodflieoptions();
 const delivery_fee = flies.delivery_fee ;
@@ -15,72 +16,134 @@ const AddToCart = async (customer_id, sku, quantity = 1) => {
   const t = await sequelize.transaction();
 
   try {
-    // Single query to get product with availability check
-    const product = await Product.findOne({ 
-      where: { sku, is_available: true }, 
+    // 1️⃣ Try to find product directly
+    let product = await Product.findOne({
+      where: { sku, is_available: true,has_variants:false },
       attributes: ["id", "name", "price", "partner_id"],
-      transaction: t 
-    });
-    if (!product) throw new Error("Product unavailable");
-
-    // Find or create cart
-    let [cart, created] = await Cart.findOrCreate({
-      where: { customer_id, status: "active" },
-      defaults: { 
-        customer_id, 
-        partner_id: product.partner_id, 
-        delivery_fee: delivery_fee,
-        subtotal: 0,
-        total: 0
-      },
       transaction: t
     });
 
-    // Enforce single restaurant rule
-    if (!created && cart.partner_id !== product.partner_id) {
-      throw new Error("You can order from only one restaurant at a time");
+
+    let variant = null;
+
+    // 2️⃣ If not found → check variant
+    if (!product) {
+      variant = await ProductVariant.findOne({
+        where: { sku, is_available: true },
+        attributes: ["id", "product_id", "price", "name"],
+        transaction: t
+      });
+     
+
+      if (!variant) throw new Error("Product unavailable");
+
+      // Fetch parent product
+      product = await Product.findByPk(variant.product_id, {
+        attributes: ["id", "name", "partner_id"],
+        transaction: t
+      });
     }
 
-    // Update delivery fee every time
-    if (!created) {
-      cart.delivery_fee = delivery_fee;
+    // 3️⃣ Final values
+    const finalProductId = product.id;
+    const finalVariantId = variant ? variant.id : null;
+    const finalVariantName = variant ? variant.name : null;
+    const finalPrice = variant ? variant.price : product.price;
+    const finalName = variant ? `${product.name} - ${variant.name}` : product.name;
+
+    
+
+    // 4️⃣ Find cart
+    let cart = await Cart.findOne({
+      where: { customer_id, status: "active" },
+      transaction: t
+    });
+
+    if (!cart) {
+      cart = await Cart.create({
+        customer_id,
+        partner_id: product.partner_id,
+        delivery_fee,
+        subtotal: 0,
+        total: 0
+      }, { transaction: t });
+    }
+
+    // 5️⃣ Enforce single restaurant - but allow replacement
+    if (cart.partner_id !== product.partner_id) {
+      // Clear existing cart items
+      await CartItem.destroy({
+        where: { cart_id: cart.id },
+        transaction: t
+      });
+      
+      // Update cart to new restaurant
+      cart.partner_id = product.partner_id;
+      cart.subtotal = 0;
+      cart.total = 0;
       await cart.save({ transaction: t });
     }
 
-    // Upsert cart item
-    const [cartItem, itemCreated] = await CartItem.findOrCreate({
-      where: { cart_id: cart.id, product_id: product.id },
-      defaults: {
-        cart_id: cart.id,
-        product_id: product.id,
-        product_name: product.name,
-        price: product.price,
-        quantity,
-        total_price: product.price * quantity
-      },
-      transaction: t
-    });
+    // 6️⃣ Find cart item (product + variant aware)
+    const whereClause = {
+      cart_id: cart.id,
+      product_id: finalProductId
+    };
 
-    if (!itemCreated) {
-      cartItem.quantity += quantity;
-      cartItem.total_price = cartItem.quantity * cartItem.price;
-      await cartItem.save({ transaction: t });
+    if (finalVariantName) {
+      whereClause.variant = finalVariantName;
+    } else {
+      whereClause.variant = null;
     }
 
-    // Recalculate cart totals using Sequelize aggregation
-    const totalResult = await CartItem.sum('total_price', {
-      where: { cart_id: cart.id },
+    let cartItem = await CartItem.findOne({
+      where: whereClause,
       transaction: t
     });
-    
-    cart.subtotal = totalResult || 0;
-    cart.total = cart.subtotal + Number(cart.delivery_fee);
+
+
+    const addedAmount = finalPrice * quantity;
+    let cartItemId = null;
+
+    if (!cartItem) {
+      cartItem = await CartItem.create({
+        cart_id: cart.id,
+        product_id: finalProductId,
+        variant: finalVariantName,
+        product_name: finalName,
+        price: finalPrice,
+        quantity,
+        total_price: addedAmount
+      }, { transaction: t });
+      cartItemId = cartItem.id;
+    } else {
+      cartItem.quantity += quantity;
+      cartItem.total_price += addedAmount;
+      await cartItem.save({ transaction: t });
+      cartItemId = cartItem.id;
+    }
+
+    // 7️⃣ Incremental cart update
+    cart.subtotal = parseFloat(cart.subtotal || 0) + parseFloat(addedAmount);
+    cart.delivery_fee = delivery_fee;
+    cart.total = parseFloat(cart.subtotal) + parseFloat(cart.delivery_fee);
+
     await cart.save({ transaction: t });
 
+    console.log("Updated cart totals:", { subtotal: cart.subtotal, delivery_fee: cart.delivery_fee, total: cart.total });
+
     await t.commit();
-    return { message: "Item added to cart successfully" };
+
+    return {
+      message: "Item added to cart successfully",
+      cart_id: cart.id,
+      cart_item_id: cartItemId
+    };
+
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) {
+      await t.rollback();
+    }
     throw error;
   }
 };
@@ -98,8 +161,22 @@ const GetCart = async (customer_id) => {
       ],
       attributes: ["id", "customer_id", "partner_id", "subtotal", "delivery_fee", "total", "status"]
     });
-    
+    console.log("Fetched cart:", JSON.stringify(cart, null, 2));
     if (!cart) return null;
+    
+    // Recalculate totals if they seem incorrect
+    if (cart.items && cart.items.length > 0) {
+      const calculatedSubtotal = cart.items.reduce((sum, item) => {
+        return sum + parseFloat(item.total_price || 0);
+      }, 0);
+      
+      // If subtotal doesn't match, update it
+      if (parseFloat(cart.subtotal) !== calculatedSubtotal) {
+        cart.subtotal = calculatedSubtotal;
+        cart.total = calculatedSubtotal + parseFloat(cart.delivery_fee || 0);
+        await cart.save();
+      }
+    }
     
     return cart;
   } catch (error) {
@@ -150,7 +227,9 @@ const UpdateCartItem = async (cart_item_id, quantity) => {
     await t.commit();
     return { message: "Cart item updated successfully" };
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) {
+      await t.rollback();
+    }
     throw error;
   }
 };
@@ -191,7 +270,9 @@ const RemoveFromCart = async (cart_item_id) => {
     await t.commit();
     return { message: "Item removed from cart" };
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) {
+      await t.rollback();
+    }
     throw error;
   }
 };
@@ -285,7 +366,9 @@ const SyncGuestCart = async (customer_id, guestItems) => {
       finalCart = cart;
       synced.push({ sku, quantity });
     } catch (error) {
-      await t.rollback();
+      if (!t.finished) {
+        await t.rollback();
+      }
       skipped.push({ sku, reason: error.message });
     }
   }

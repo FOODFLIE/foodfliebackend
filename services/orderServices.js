@@ -2,16 +2,20 @@ const Order = require("../models/order");
 const OrderItem = require("../models/order_item");
 const Cart = require("../models/cart");
 const CartItem = require("../models/cartItems");
+const Partner = require("../models/partner");
 const sequelize = require("../config/sequelize");
 const Address = require("../models/address");
 const { getFoodflieoptions } = require("../utils/foodlieutils");
 const { autoAssignOrder } = require("./rider/riderOrderServices");
 const { sendOrderConfirmation } = require("../utils/twilioService");
+const { getDistance } = require("../utils/deliveryRadius");
 const axios = require("axios");
 
 const flies = getFoodflieoptions();
 
 const return_url = flies.return_url;
+const delivery_fee = flies.delivery_fee;
+const max_delivery_fee = flies.max_delivery_fee;
 //  Place order from cart
 
 const PlaceOrder = async (
@@ -31,13 +35,37 @@ const PlaceOrder = async (
 
     if (!cart) throw new Error("Cart is empty");
 
+    // Fetch partner location
+    const partner = await Partner.findByPk(cart.partner_id, {
+      attributes: ["id", "store_name", "phone", "latitude", "longitude"],
+      transaction: t,
+    });
+
+    if (!partner) throw new Error("Partner not found");
+
+    // Calculate delivery fee based on distance
+    let calculatedDeliveryFee = delivery_fee;
+    if (addressData.latitude && addressData.longitude && partner.latitude && partner.longitude) {
+      const distance = getDistance(
+        addressData.latitude,
+        addressData.longitude,
+        partner.latitude,
+        partner.longitude
+      );
+      calculatedDeliveryFee = distance > 2 ? max_delivery_fee : delivery_fee;
+    }
+
+    const finalAmount = parseFloat(cart.subtotal) + parseFloat(calculatedDeliveryFee);
+
     // Get cart items
     const cartItems = await CartItem.findAll({
       where: { cart_id: cart.id },
       transaction: t,
     });
 
-    if (cartItems.length === 0) throw new Error("Cart is empty");
+    if (cartItems.length === 0) {
+      throw new Error("Cart is empty");
+    }
 
     // Create order
     const order = await Order.create(
@@ -45,12 +73,14 @@ const PlaceOrder = async (
         customer_id,
         partner_id: cart.partner_id,
         total_amount: cart.subtotal,
-        delivery_fee: cart.delivery_fee,
-        final_amount: cart.total,
+        delivery_fee: calculatedDeliveryFee,
+        final_amount: finalAmount,
         status: "placed",
         payment_method,
         payment_status: "pending",
-        address: addressData.fullAddress || addressData.coords?.address,
+        address:
+          addressData.fullAddress ||
+          addressData.coords?.address,
         customer_phone: addressData.customer_phone,
         latitude: addressData.latitude,
         longitude: addressData.longitude,
@@ -59,51 +89,98 @@ const PlaceOrder = async (
       { transaction: t },
     );
 
-    // Create order items from cart items
+    // Create order items
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       menu_item_id: item.product_id,
       item_name: item.product_name,
       quantity: item.quantity,
       price: item.price,
+      variant: item.variant,
       total_price: item.total_price,
     }));
 
-    await OrderItem.bulkCreate(orderItems, { transaction: t });
+    await OrderItem.bulkCreate(orderItems, {
+      transaction: t,
+    });
 
     // Delete cart items
-    await CartItem.destroy({ where: { cart_id: cart.id }, transaction: t });
+    await CartItem.destroy({
+      where: { cart_id: cart.id },
+      transaction: t,
+    });
 
     // Delete cart
-    await cart.destroy({ transaction: t });
+    await cart.destroy({
+      transaction: t,
+    });
 
+    // Commit transaction early
     await t.commit();
-    // 🔥 Send data to n8n (DO NOT use await for speed)
-    axios.post("https://n8n-service-ml5w.onrender.com/webhook-test/webhook/order", {
-        orderId: order.id,
-        amount: order.final_amount,
-        customer: customer_id,
-        phone: addressData.customer_phone,
-        address: order.address,
-      })
-      .catch((err) => {
-        console.error("n8n webhook failed:", err.message);
-      });
-    // Send WhatsApp notification
+
+    // Send n8n webhook (non-blocking)
+ axios
+  .post(
+    "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
+    {
+      orderId: order.id,
+
+      items: orderItems.map((item) => ({
+        item_name:
+          item.item_name || item.product_name,
+
+        variant: item.variant || null,
+
+        quantity: item.quantity,
+
+        total_price: item.total_price,
+      })),
+
+      storeName:
+        partner?.store_name || "Unknown Store",
+
+      storePhone:
+        partner?.phone || "N/A",
+
+      amount: order.final_amount,
+
+      customer: customer_id,
+
+      phone: addressData.customer_phone,
+
+      address: order.address,
+    }
+  )
+  .then(() => {
+    console.log("n8n webhook sent successfully");
+  })
+  .catch((err) => {
+    console.error(
+      "n8n webhook failed:",
+      err.message
+    );
+  });
+
+    // WhatsApp notification (non-blocking)
     if (addressData.receiverNumber) {
-      try {
-        await sendOrderConfirmation(addressData.receiverNumber, order.id);
-      } catch (error) {
-        console.error("WhatsApp notification failed:", error.message);
-      }
+      sendOrderConfirmation(
+        addressData.receiverNumber,
+        order.id
+      ).catch((err) => {
+        console.error(
+          "WhatsApp notification failed:",
+          err.message
+        );
+      });
     }
 
-    // Auto-assign rider after order is placed
-    try {
-      await autoAssignOrder(order.id);
-    } catch (error) {
-      console.error("Rider assignment failed:", error.message);
-    }
+    // Rider assignment (non-blocking)
+    autoAssignOrder(order.id).catch((err) => {
+      console.error(
+        "Rider assignment failed:",
+        err.message
+      );
+    });
 
     return {
       success: true,
@@ -112,9 +189,13 @@ const PlaceOrder = async (
       redirect_url: return_url + `/${order.id}`,
     };
   } catch (error) {
-    console.error("PlaceOrder - Error:", error.message);
-    console.error("PlaceOrder - Error details:", error);
+    console.error(
+      "PlaceOrder - Error:",
+      error.message
+    );
+
     await t.rollback();
+
     throw error;
   }
 };

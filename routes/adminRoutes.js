@@ -19,6 +19,7 @@ const {
   CalculateDeliveryFeeController
 } = require("../controllers/admin/feeController");
 const { fetchAllStores, toggleStoreStatus } = require("../controllers/admin/adminStoreController");
+const { createCouponController, getAllCouponsController } = require("../controllers/admin/adminCouponController");
 
 router.post("/login", AdminLoginController);
 router.get("/orders", adminAuth,getOrdersController);
@@ -45,4 +46,8 @@ router.get("/customers/daily", adminAuth, getDailyCustomersController);
 router.get("/stores", adminAuth, fetchAllStores);
 router.put("/stores/:id", adminAuth, toggleStoreStatus); // You can create a separate controller for fetching store by ID if needed
 
+
+// coupon management routes
+router.post("/coupons/add", adminAuth, createCouponController);
+router.get("/coupons", adminAuth, getAllCouponsController);
 module.exports = router;
