@@ -1,4 +1,4 @@
-const { PlaceOrder, GetCustomerOrders, GetOrderById } = require("../services/orderServices");
+const { PlaceOrder, GetCustomerOrders, GetOrderById, verifyAndLinkPayment } = require("../services/orderServices");
 
 const PlaceOrderController = async (req, res) => {
   try {
@@ -8,6 +8,31 @@ const PlaceOrderController = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+// Handles incoming UTR validation checking
+const SubmitPaymentController = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { utr } = req.body;
+    const customer_id = req.customer.id;
+    console.log("cus",customer_id)
+
+    // Reject formats that aren't exactly a 4-digit number string
+    if (!utr || utr.trim().length !== 4 || !/^\d+$/.test(utr)) {
+      return res.status(400).json({ message: "Invalid payment token. Please supply exactly 4 digits." });
+    }
+
+    const result = await verifyAndLinkPayment({
+      orderId,
+      customer_id,
+      utr: utr.trim()
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
   }
 };
 
@@ -32,4 +57,4 @@ const GetOrderByIdController = async (req, res) => {
   }
 };
 
-module.exports = { PlaceOrderController, GetCustomerOrdersController, GetOrderByIdController };
+module.exports = { PlaceOrderController,SubmitPaymentController,  GetCustomerOrdersController, GetOrderByIdController };

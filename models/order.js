@@ -65,6 +65,15 @@ const Order = sequelize.define(
       type: DataTypes.STRING(20),
       defaultValue: "pending",
     },
+    payment_utr: {
+      type: DataTypes.STRING(12),
+      allowNull: true,
+    },
+
+    payment_verified_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
 
     address: {
       type: DataTypes.TEXT,
