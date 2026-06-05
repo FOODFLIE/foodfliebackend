@@ -16,18 +16,21 @@ const flies = getFoodflieoptions();
 const return_url = flies.return_url;
 const delivery_fee = flies.delivery_fee;
 const max_delivery_fee = flies.max_delivery_fee;
-//  Place order from cart
 
+
+
+/**
+ * Phase 1 Service Logic: Initiates order shell securely in a holding state
+ */
 const PlaceOrder = async (
   customer_id,
   addressData,
-  payment_method = "COD",
+  payment_method = "UPI",
   cooking_instructions = null,
 ) => {
   const t = await sequelize.transaction();
 
   try {
-    // Get active cart
     const cart = await Cart.findOne({
       where: { customer_id, status: "active" },
       transaction: t,
@@ -35,7 +38,6 @@ const PlaceOrder = async (
 
     if (!cart) throw new Error("Cart is empty");
 
-    // Fetch partner location
     const partner = await Partner.findByPk(cart.partner_id, {
       attributes: ["id", "store_name", "phone", "latitude", "longitude"],
       transaction: t,
@@ -43,7 +45,6 @@ const PlaceOrder = async (
 
     if (!partner) throw new Error("Partner not found");
 
-    // Calculate delivery fee based on distance
     let calculatedDeliveryFee = delivery_fee;
     if (addressData.latitude && addressData.longitude && partner.latitude && partner.longitude) {
       const distance = getDistance(
@@ -57,7 +58,6 @@ const PlaceOrder = async (
 
     const finalAmount = parseFloat(cart.subtotal) + parseFloat(calculatedDeliveryFee);
 
-    // Get cart items
     const cartItems = await CartItem.findAll({
       where: { cart_id: cart.id },
       transaction: t,
@@ -67,7 +67,7 @@ const PlaceOrder = async (
       throw new Error("Cart is empty");
     }
 
-    // Create order
+    // Order sits strictly behind a holding state checkpoint
     const order = await Order.create(
       {
         customer_id,
@@ -75,12 +75,10 @@ const PlaceOrder = async (
         total_amount: cart.subtotal,
         delivery_fee: calculatedDeliveryFee,
         final_amount: finalAmount,
-        status: "placed",
-        payment_method,
+        status: "payment_pending", // Holding status definition prevents early prep issues
+        payment_method: "UPI",
         payment_status: "pending",
-        address:
-          addressData.fullAddress ||
-          addressData.coords?.address,
+        address: addressData.fullAddress || addressData.coords?.address,
         customer_phone: addressData.customer_phone,
         latitude: addressData.latitude,
         longitude: addressData.longitude,
@@ -89,7 +87,6 @@ const PlaceOrder = async (
       { transaction: t },
     );
 
-    // Create order items
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       menu_item_id: item.product_id,
@@ -100,104 +97,97 @@ const PlaceOrder = async (
       total_price: item.total_price,
     }));
 
-    await OrderItem.bulkCreate(orderItems, {
-      transaction: t,
-    });
+    await OrderItem.bulkCreate(orderItems, { transaction: t });
 
-    // Delete cart items
-    await CartItem.destroy({
-      where: { cart_id: cart.id },
-      transaction: t,
-    });
+    await CartItem.destroy({ where: { cart_id: cart.id }, transaction: t });
+    await cart.destroy({ transaction: t });
 
-    // Delete cart
-    await cart.destroy({
-      transaction: t,
-    });
-
-    // Commit transaction early
     await t.commit();
 
-    // Send n8n webhook (non-blocking)
- axios
-  .post(
-    "https://n8n-service-ml5w.onrender.com/webhook/webhook/order",
-    {
-      orderId: order.id,
-
-      items: orderItems.map((item) => ({
-        item_name:
-          item.item_name || item.product_name,
-
-        variant: item.variant || null,
-
-        quantity: item.quantity,
-
-        total_price: item.total_price,
-      })),
-
-      storeName:
-        partner?.store_name || "Unknown Store",
-
-      storePhone:
-        partner?.phone || "N/A",
-
-      amount: order.final_amount,
-
-      customer: customer_id,
-
-      phone: addressData.customer_phone,
-
-      address: order.address,
-    }
-  )
-  .then(() => {
-    console.log("n8n webhook sent successfully");
-  })
-  .catch((err) => {
-    console.error(
-      "n8n webhook failed:",
-      err.message
-    );
-  });
-
-    // WhatsApp notification (non-blocking)
-    if (addressData.receiverNumber) {
-      sendOrderConfirmation(
-        addressData.receiverNumber,
-        order.id
-      ).catch((err) => {
-        console.error(
-          "WhatsApp notification failed:",
-          err.message
-        );
-      });
-    }
-
-    // Rider assignment (non-blocking)
-    autoAssignOrder(order.id).catch((err) => {
-      console.error(
-        "Rider assignment failed:",
-        err.message
-      );
-    });
-
+    // No operational webhooks or background worker automation are called here anymore.
     return {
       success: true,
       order_id: order.id,
-      message: "Order placed successfully",
+      message: "Order initiated. Awaiting payment credentials tracking token.",
       redirect_url: return_url + `/${order.id}`,
     };
   } catch (error) {
-    console.error(
-      "PlaceOrder - Error:",
-      error.message
-    );
-
+    console.error("PlaceOrder - Error:", error.message);
     await t.rollback();
-
     throw error;
   }
+};
+
+/**
+ * Phase 2 Service Logic: Attaches tracking parameters and triggers downstream operations
+ */
+const verifyAndLinkPayment = async ({ orderId, customer_id, utr }) => {
+  // Pull transaction data with related elements to build outward data structures
+  const order = await Order.findOne({
+    where: { id: orderId, customer_id },
+    include: [
+      { model: OrderItem, as: 'items' }, 
+      { model: Partner, as: 'partner' }
+    ]
+  });
+
+  if (!order) {
+    const error = new Error('Order record not found or access unauthorized.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (order.status !== 'payment_pending') {
+    const error = new Error('This order has already moved out of the payment checkout process.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Update order definitions to update system terminals
+  order.payment_status = 'PENDING_VERIFICATION';
+  order.status = 'placed'; 
+  order.payment_utr = utr;
+  order.payment_verified_at = new Date();
+
+  await order.save();
+
+  // ==========================================
+  // DISPATCH OPERATIONAL LIFECYCLE (Non-blocking background fires)
+  // ==========================================
+
+  // A. Fire n8n live kitchen terminal board monitor updates
+  axios.post("https://n8n-service-ml5w.onrender.com/webhook/webhook/order", {
+    orderId: order.id,
+    items: order.items.map((item) => ({
+      item_name: item.item_name,
+      variant: item.variant || null,
+      quantity: item.quantity,
+      total_price: item.total_price,
+    })),
+    storeName: order.partner?.store_name || "Unknown Store",
+    storePhone: order.partner?.phone || "N/A",
+    amount: order.final_amount,
+    customer: customer_id,
+    phone: order.customer_phone,
+    address: order.address,
+  }).catch(err => console.error("Delayed n8n processing payload failed:", err.message));
+
+  // B. Send Customer WhatsApp Notification Updates
+  if (order.customer_phone) {
+    sendOrderConfirmation(order.customer_phone, order.id)
+      .catch(err => console.error("Delayed WhatsApp confirmation alert failed:", err.message));
+  }
+
+  // C. Execute Driver Proximity Assignment Logic loops
+  autoAssignOrder(order.id)
+    .catch(err => console.error("Delayed Rider routing automation assignment loop issue:", err.message));
+
+  return {
+    success: true,
+    order_id: order.id,
+    status: order.status,
+    message: "Payment details matched. Order passed to operations dashboard.",
+  };
 };
 
 /**
@@ -236,4 +226,4 @@ const GetOrderById = async (order_id, customer_id) => {
   }
 };
 
-module.exports = { PlaceOrder, GetCustomerOrders, GetOrderById };
+module.exports = { PlaceOrder, GetCustomerOrders, GetOrderById, verifyAndLinkPayment };
