@@ -10,6 +10,7 @@ const getPartnerOrders = async ({ partner_id, status }) => {
         status: {
           [Op.in]:["placed","assigned","picked_up","delivered"],
         },
+        payment_status: "completed"
       },
       include: [
         {
