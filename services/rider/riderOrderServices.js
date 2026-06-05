@@ -65,7 +65,10 @@ const autoAssignOrder = async (orderId) => {
 const getRiderOrders = async (rider_id) => {
   try {
     const orders = await Order.findAll({
-      where: { rider_id },
+      where: { 
+        rider_id,
+        payment_status: "completed"
+      },
       order: [["created_at", "DESC"]],
       include: [
         {
