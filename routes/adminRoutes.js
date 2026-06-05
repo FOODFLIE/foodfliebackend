@@ -20,9 +20,11 @@ const {
 } = require("../controllers/admin/feeController");
 const { fetchAllStores, toggleStoreStatus } = require("../controllers/admin/adminStoreController");
 const { createCouponController, getAllCouponsController } = require("../controllers/admin/adminCouponController");
+const { verifyOrderPaymentController } = require("../controllers/admin/adminPaymentController");
 
 router.post("/login", AdminLoginController);
 router.get("/orders", adminAuth,getOrdersController);
+router.put("/orders/:id/verify-payment", adminAuth, verifyOrderPaymentController);
 router.post("/riders/add", adminAuth,AddRiderController);
 router.get("/riders", adminAuth,GetRidersController);
 router.post("/affiliates/add",adminAuth, AddAffiliateController);
